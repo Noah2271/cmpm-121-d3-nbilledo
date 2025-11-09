@@ -10,3 +10,22 @@
   width: 100%;
   height: 80vh;
 }
+
+/* remove white box around permanent cell value tooltips */
+.leaflet-tooltip.cell-value-tooltip,
+.leaflet-tooltip.cell-value-tooltip span {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  text-align: center !important;
+  font-size: 25px !important;
+  font-style: bold !important;
+  align-content: center !important;
+  color: #ffffff !important; /* change color if desired */
+}
+
+/* remove the tooltip arrow/triangle */
+.leaflet-tooltip.cell-value-tooltip::before {
+  display: none !important;
+}
