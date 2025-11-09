@@ -29,21 +29,43 @@ Key gameplay challenge: Can players collect and craft tokens from nearby locatio
 - [x] draw a rectangle representing one cell on the map
 - [x] use loops to draw a whole grid of cells on the map
 - [x] create tokens on a randomized number of grid cells using _luck.ts
-- [ ] allow user to pick up the token within a square radius around them
+- [x] allow user to pick up the token within a square radius around them
 - [x] make sure cells lose their token when they are picked up
 - [x] make it so player can only hold one token at a time
-- [ ] make it so the player can put the token down where they please
-- [ ] implement crafting, so if the player places two identical tokens on eachother they combine
+- [x] make it so the player can put the token down where they please
+- [x] implement crafting, so if the player places two identical tokens on eachother they combine
 
 ## D3.b Globe Spanning Gameplay
 
 Key technical challenge: How is a map with cells created without retaining memory when they are not visible on the screen? How do you create an end state for the game?
-Key gameplay challenge: Can the player move their character about the map or scroll the map to see cells everywhere? Is the player succesfully stopped from interacting from cells that are out of range? Is the player able to craft and reach a high enough token value to end the game?
+Key gameplay challenge: Can players craft an even higher value token by moving to other locations to get access to more crafting materials?
 
 ### D3.b Steps
 
-- [ ] implement some sort of button system for player movement or allow the player to scroll the map
-- [ ] confirm that cells actually spawn wherever the player can see
-- [ ] confirm that the player interaction radius actually stops the player from interacting with all cells
-- [ ] edit cell implementation so that they spawn when on the screen. Despawn otherwise
+- [x] confirm that cells actually spawn wherever the player can see (Tested Via Drag)
+- [ ] implement some sort of button system or location tracking for player movement
+- [ ] ensure the active radius, does in-fact, move with the player
 - [ ] create a conditional where if the player is HOLDING a token of high enough value, game ends
+- [ ] change the UI at the bottom of the screen to display both the current held value, and other indicators such as "You can't pick up token (value), you are already holding a token!".
+- [ ] possibly add some effects when combining tokens to indicate to the player that they're supposed to be doing that.
+- [ ] add header to the top of the screen that indicates a game title and the goal of the game (What value is necessary for the end state)
+- [ ] change player indicator to something more interesting
+- [ ] make sure the drawing order of objects such as the player, token/cache cells, and neighborhood grid is correct for design
+
+## D3.c Object Persistence
+
+Key technical challenge: Can your software accurately remember the state of map cells even when they scroll off the screen?
+Key gameplay challenge: Can you fix a gameplay bug where players can farm tokens by moving into and out of a region repeatedly to get access to fresh resources?
+
+## D3.c Steps
+
+- [x] With the current system implemented, it doesn't seemm like the software is forgetting the state of the map cels when off screen... Likely do to the mapping system used for tokens implemented in context objects.
+
+## D4.d Gameplay across real-world space and time
+
+Key technical challenge: Can your software remember game state even when the page is closed? Is the player character's in game movement controlled by actual geo-location?
+Key gameplay challenge: Can the user test the game with multiple gameplay sesisons, involving some real-world movement and simulated movement?
+
+## D3.d Steps
+
+- [ ] Not planned out yet
