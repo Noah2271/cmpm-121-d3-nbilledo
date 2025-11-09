@@ -1,10 +1,10 @@
 # D3: World of Bits
 
-# Game Design Vision
+## Game Design Vision
 
 A game in which crafting is the main core mechanic. The player navigates this game's world via a grid which is overlayed onto a real world map. The grid consists of rectangles in which tokens could spawn with various number values. Each of these tokens can be grabbed and put down ontop of any other token of the same value or into any empty slot. Combining two tokens by putting two equal value ones on top of each other will create a token of the combined value. The player however, cannot hold more than one token at once.
 
-# Technologies
+## Technologies
 
 - TypeScript for most game code, little to no explicit HTML, and all CSS collected in common `style.css` file
 - Deno and Vite for building
@@ -12,7 +12,7 @@ A game in which crafting is the main core mechanic. The player navigates this ga
 - Leaflet for map interactions and mechanics
 - Source code in main.ts and style fields in style.css
 
-# Assignments
+## Assignments
 
 ## D3.a: Core Mechanics (token collection and crafting)
 
