@@ -24,10 +24,10 @@ Key gameplay challenge: Can players collect and craft tokens from nearby locatio
 - [x] copy main.ts to reference.ts for future reference
 - [x] delete everything in main.ts
 - [x] put a basic leaflet map on the screen
-- [ ] random spawn location might be fun
-- [ ] draw the player's location on the map
-- [ ] draw a rectangle representing one cell on the map
-- [ ] use loops to draw a whole grid of cells on the map
+- REMOVED RANDOM LOCATION IDEA. TOO MUCH WATER ON GLOBE
+- [x] draw the player's location on the map
+- [x] draw a rectangle representing one cell on the map
+- [x] use loops to draw a whole grid of cells on the map
 - [ ] create tokens on a randomized number of grid cells using _luck.ts
 - [ ] allow user to pick up the token within a square radius around them
 - [ ] make sure cells lose their token when they are picked up
