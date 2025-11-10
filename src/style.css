@@ -1,17 +1,45 @@
-#controlPanel {
-  padding: 1rem;
+html, body {
+  height: 100%;
 }
+body {
+  box-sizing: border-box;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start; 
+  padding-top: 2rem;
 
-#statusPanel {
-  padding: 1rem;
+  background-color: #000000;
 }
 
 #map {
-  width: 100%;
+  width: 70%;
+  max-width: 1200px;
   height: 80vh;
+  box-sizing: border-box;
+  border: 10px solid black;
+  overflow: hidden;
 }
 
-/* remove white box around permanent cell value tooltips */
+#titleCard {
+  font-family: fantasy;
+  font-size: 35px;
+  letter-spacing: 15px;
+}
+
+#statusPanel {
+  width: 68.4%;
+  display: flex;
+  align-items: center; 
+  justify-content: center; 
+  text-align: center; 
+  font-size: 25px;
+  font-family: fantasy;
+  color: aliceblue;
+  background-color: #000000;
+}
+
 .leaflet-tooltip.cell-value-tooltip,
 .leaflet-tooltip.cell-value-tooltip span {
   background: transparent !important;
@@ -22,10 +50,37 @@
   font-size: 25px !important;
   font-style: bold !important;
   align-content: center !important;
-  color: #ffffff !important; /* change color if desired */
+  color: #ffffff !important;
 }
 
-/* remove the tooltip arrow/triangle */
+
 .leaflet-tooltip.cell-value-tooltip::before {
   display: none !important;
+}
+
+
+#titleCard span {
+  display: inline-block;
+  animation: hue 3s linear infinite;
+  animation-delay: var(--delay, 0s);
+  will-change: color;
+  color: hsl(0, 100%, 50%);
+}
+
+@keyframes hue {
+  0% {
+    color: hsl(50, 71%, 63%);
+  }
+  25% {
+    color: hsl(38, 100%, 50%);
+  }
+  50% {
+    color: hsl(0, 100%, 50%);
+  }
+  75% {
+    color: hsl(135, 100%, 50%);
+  }
+  100% {
+    color: hsl(205, 100%, 50%);
+  }
 }

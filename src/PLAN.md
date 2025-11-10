@@ -46,11 +46,11 @@ Key gameplay challenge: Can players craft an even higher value token by moving t
 - [ ] implement some sort of button system or location tracking for player movement
 - [ ] ensure the active radius, does in-fact, move with the player
 - [ ] create a conditional where if the player is HOLDING a token of high enough value, game ends
-- [ ] change the UI at the bottom of the screen to display both the current held value, and other indicators such as "You can't pick up token (value), you are already holding a token!".
+- [X] change the UI at the bottom of the screen to display both the current held value, and other indicators such as "You can't pick up token (value), you are already holding a token!".
 - [ ] possibly add some effects when combining tokens to indicate to the player that they're supposed to be doing that.
-- [ ] add header to the top of the screen that indicates a game title and the goal of the game (What value is necessary for the end state)
+- [X] add header to the top of the screen that indicates a game title and the goal of the game (What value is necessary for the end state)
 - [ ] change player indicator to something more interesting
-- [ ] make sure the drawing order of objects such as the player, token/cache cells, and neighborhood grid is correct for design
+- [X] make sure the drawing order of objects such as the player, token/cache cells, and neighborhood grid is correct for design
 
 ## D3.c Object Persistence
 

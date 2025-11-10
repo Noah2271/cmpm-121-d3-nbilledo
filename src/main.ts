@@ -9,9 +9,17 @@ const GAMEPLAY_ZOOM = 19;
 const NEIGHBORHOOD_SIZE = 6;
 const CACHE_SPAWN_PROBABILITY = 0.1;
 
-const controlPanelDiv = document.createElement("div");
-controlPanelDiv.id = "controlPanel";
-document.body.append(controlPanelDiv);
+const Title_Card = document.createElement("div");
+Title_Card.id = "titleCard";
+document.body.append(Title_Card);
+const _titleText = "WORLD OF BITS - COMBINE TO A VALUE OF 2048 TO WIN!";
+Title_Card.innerHTML = _titleText
+  .split("")
+  .map((ch, idx) => {
+    const char = ch === " " ? "&nbsp;" : ch;
+    return `<span style="--delay:${(idx * 0.08).toFixed(2)}s">${char}</span>`;
+  })
+  .join("");
 
 const mapDiv = document.createElement("div");
 mapDiv.id = "map";
@@ -20,7 +28,7 @@ document.body.append(mapDiv);
 const statusPanelDiv = document.createElement("div");
 statusPanelDiv.id = "statusPanel";
 document.body.append(statusPanelDiv);
-statusPanelDiv.innerHTML = "Click a cell to pick up a token and begin! ";
+statusPanelDiv.innerHTML = "CLICK A CELL TO PICK UP A TOKEN AND BEGIN!";
 
 // --------------------------------- map and player set up ----------------- //
 /*const RANDOM_LATLNG = (() => {
@@ -43,13 +51,22 @@ const map = leaflet.map(mapDiv, {
   scrollWheelZoom: false,
 });
 
+// create custom panes for strict z ordering
+map.createPane("neighbourhoodPane");
+(map.getPane("neighbourhoodPane") as HTMLElement).style.zIndex = "650";
+
+map.createPane("playerPane");
+(map.getPane("playerPane") as HTMLElement).style.zIndex = "660";
+
 leaflet.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 19,
   attribution:
     '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
 }).addTo(map);
 
-const playerMarker = leaflet.marker(RANDOM_LATLNG).addTo(map);
+
+const playerMarker = leaflet.marker(RANDOM_LATLNG, { pane: "playerPane" })
+  .addTo(map);
 playerMarker.addTo(map);
 
 // --------------------------------- grid and token logic --------------------- //
@@ -79,7 +96,7 @@ const tokenCtx: TokenContext = {
 };
 
 function generateTokenValue(token: string) {
-  const exp = Math.floor(luck(token + ":v") * 5);
+  const exp = 1 + Math.floor(luck(token + ":v") * 8);
   return 2 ** exp; // generates values 1,2,4,8,16
 }
 
@@ -115,7 +132,9 @@ function redrawGrid() {
     map.unproject(boundaryBottomRight, zoom),
   ]);
 
+  // when drawing the neighbourhood rectangle use the pane option:
   const neighbourhoodRect = leaflet.rectangle(neighbourhoodBounds, {
+    pane: "neighbourhoodPane",
     color: "#000000ff",
     weight: 2,
     fill: false,
@@ -194,30 +213,7 @@ function generateAndUpdateTokens(
 
   if (ctx.tokenMap.has(token)) { // if the cell has a token generated, draw it
     const tokenValue = ctx.tokenMap.get(token)!;
-    let fillColor = "#cccccc";
-    let strokeColor = "#ffffffff";
-    switch (tokenValue) { // different colors for different token values
-      case 1:
-        fillColor = "#2196f3";
-        strokeColor = "#0b79d0";
-        break;
-      case 2:
-        fillColor = "#b7a60eff";
-        strokeColor = "#685e13ff";
-        break;
-      case 4:
-        fillColor = "#ff9800";
-        strokeColor = "#b25500";
-        break;
-      case 8:
-        fillColor = "#f44336";
-        strokeColor = "#b71c1c";
-        break;
-      case 16:
-        fillColor = "#4caf50";
-        strokeColor = "#1b5e20";
-        break;
-    }
+    const { fillColor, strokeColor } = getColorsForTokenValue(tokenValue);
 
     const cache = leaflet.rectangle(bounds, {
       color: strokeColor,
@@ -263,7 +259,14 @@ function placeGrabOrCombine(
       ctx.setPlayerHolding(tokenValue);
       ctx.tokenMap.delete(cell);
       ctx.pickedCells.add(cell);
-      ctx.statusPanelDiv.innerText = "Holding: " + String(tokenValue);
+      ctx.statusPanelDiv.innerHTML = `
+        <div style="text-align:center;">
+          <div style="color:${getColorsForTokenValue(tokenValue).fillColor};">
+            HOLDING: ${String(tokenValue)}
+          </div>
+          <div>CLICK TO PLACE ON AN EMPTY CELL OR MERGE WITH AN IDENTICAL CELL</div>
+        </div>
+      `;
       redrawGrid();
       return;
     }
@@ -273,13 +276,29 @@ function placeGrabOrCombine(
       const combined = tokenValue * 2;
       ctx.tokenMap.set(cell, combined);
       ctx.setPlayerHolding(null);
-      ctx.statusPanelDiv.innerText = "Combined to: " + String(combined);
+      ctx.statusPanelDiv.innerHTML = `
+      <div style="text-align:center;">
+        <div>HOLDING: X</div>
+        <div style="color:${
+        getColorsForTokenValue(combined).fillColor
+      };">YOU'VE COMBINED TWO CELLS TO CREATE: ${String(combined)}</div>
+      </div>
+    `;
       redrawGrid();
       return;
     }
 
     // otherwise refuse
-    ctx.statusPanelDiv.innerText = "Already holding: " + String(holding);
+    ctx.statusPanelDiv.innerHTML = `
+      <div style="text-align:center;">
+        <div style="color:${
+      getColorsForTokenValue(holding).fillColor
+    };">HOLDING: ${String(holding)}</div>
+        <div style="color:${
+      getColorsForTokenValue(tokenValue).fillColor
+    };">CANNOT COMBINE WITH CELL: ${String(tokenValue)}</div>
+      </div>
+    `;
     return;
   }
 
@@ -288,12 +307,47 @@ function placeGrabOrCombine(
     return;
   }
   ctx.tokenMap.set(cell, holding);
-  ctx.pickedCells.delete(cell);
-  ctx.statusPanelDiv.innerText = "Placed down token: " + String(holding);
   ctx.setPlayerHolding(null);
+  ctx.pickedCells.delete(cell);
+  ctx.statusPanelDiv.innerHTML = `
+  <div style="text-align:center;">
+    <div>HOLDING: X</div>
+    <div style="color:${getColorsForTokenValue(holding).fillColor};">
+      YOU PLACED DOWN CELL: ${String(holding)}
+    </div>
+  </div>
+`;
   redrawGrid();
 }
 
+function getColorsForTokenValue(tokenValue: number) {
+  const exp = Math.log2(tokenValue);
+  // index 0 -> value 2 (2^1)
+  const index = Math.max(0, Math.floor(exp) - 1);
+
+
+  const palette: { fill: string; stroke: string }[] = [
+    { fill: "#e4db82ff", stroke: "#b59f00" }, // 2
+    { fill: "#ff9800", stroke: "#b25500" }, // 4
+    { fill: "#f44336", stroke: "#b71c1c" }, // 8
+    { fill: "#4caf50", stroke: "#1b5e20" }, // 16
+    { fill: "#2196f3", stroke: "#0b79d0" }, // 32
+    { fill: "#9c27b0", stroke: "#6a1b9a" }, // 64
+    { fill: "#00bcd4", stroke: "#007c91" }, // 128
+    { fill: "#ff5722", stroke: "#b23b12" }, // 256
+    { fill: "#8bc34a", stroke: "#558b2f" }, // 512
+    { fill: "#ffc107", stroke: "#ff6f00" }, // 1024
+    { fill: "#e91e63", stroke: "#880e4f" }, // 2048
+  ];
+
+  if (index < palette.length) {
+    return {
+      fillColor: palette[index].fill,
+      strokeColor: palette[index].stroke,
+    };
+  }
+  return { fillColor: "#000000", strokeColor: "#000000" }; // not implementing past 2048 should never reach this unless the end state broken
+}
 // ---------------- game loop ---------------- //
 map.on("moveend zoomend", redrawGrid);
 globalThis.addEventListener("resize", () => {
