@@ -43,14 +43,14 @@ Key gameplay challenge: Can players craft an even higher value token by moving t
 ### D3.b Steps
 
 - [x] confirm that cells actually spawn wherever the player can see (Tested Via Drag)
-- [ ] implement some sort of button system or location tracking for player movement
-- [ ] ensure the active radius, does in-fact, move with the player
+- [X] implement some sort of button system or location tracking for player movement
+- [X] ensure the active radius, does in-fact, move with the player
 - [ ] create a conditional where if the player is HOLDING a token of high enough value, game ends
-- [X] change the UI at the bottom of the screen to display both the current held value, and other indicators such as "You can't pick up token (value), you are already holding a token!".
+- [x] change the UI at the bottom of the screen to display both the current held value, and other indicators such as "You can't pick up token (value), you are already holding a token!".
 - [ ] possibly add some effects when combining tokens to indicate to the player that they're supposed to be doing that.
-- [X] add header to the top of the screen that indicates a game title and the goal of the game (What value is necessary for the end state)
-- [ ] change player indicator to something more interesting
-- [X] make sure the drawing order of objects such as the player, token/cache cells, and neighborhood grid is correct for design
+- [x] add header to the top of the screen that indicates a game title and the goal of the game (What value is necessary for the end state)
+- [Moved to D3.c] change player indicator to something more interesting
+- [x] make sure the drawing order of objects such as the player, token/cache cells, and neighborhood grid is correct for design
 
 ## D3.c Object Persistence
 
@@ -60,6 +60,9 @@ Key gameplay challenge: Can you fix a gameplay bug where players can farm tokens
 ## D3.c Steps
 
 - [x] With the current system implemented, it doesn't seemm like the software is forgetting the state of the map cels when off screen... Likely do to the mapping system used for tokens implemented in context objects.
+- [ ] Possibly change the radius box, instead using the 'allowed' value of each box denoting whether or not the box has a certain effect which indicates it's in range of the player.
+- [ ] Maybe look into a more efficient way to spawn tiles or add a cooldown to how fast the player can MANUALLY move across the screen via arrow controls. Too much movement loads tiles way too fast. A possible solution can also be loading in tiles after a set amount of time after manual movement stops.
+- [ ] Change the player indicator to something more interesting.
 
 ## D4.d Gameplay across real-world space and time
 

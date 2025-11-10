@@ -64,7 +64,6 @@ leaflet.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
 }).addTo(map);
 
-
 const playerMarker = leaflet.marker(RANDOM_LATLNG, { pane: "playerPane" })
   .addTo(map);
 playerMarker.addTo(map);
@@ -102,15 +101,16 @@ function generateTokenValue(token: string) {
 
 function redrawGrid() {
   gridLayer.clearLayers(); // clear the grid layer
+  neighborhoodLayer.clearLayers();
 
   const origin = RANDOM_LATLNG; // the fixed origin generated at the start of the program that the entire grid is aligned to
   const zoom = map.getZoom();
   const originPoint = map.project(origin, zoom); // convert origin to pixel coordinates
   const pxScreenBoundary = map.getPixelBounds(); // screen view boundary in pixels
   const pxCellSize = map.getZoom() * 2; // dynamic for later possible implementation of zooming in, out
-  const playerPoint = map.project(RANDOM_LATLNG, zoom); // player spawn position to pixel coordinates at the current zoom level.
-  const playerI = Math.floor((playerPoint.y - originPoint.y) / pxCellSize); // player position horizontal and vertical in relative to the origin point
-  const playerJ = Math.floor((playerPoint.x - originPoint.x) / pxCellSize);
+  const playerPoint = map.project(playerMarker.getLatLng(), zoom); // use current player marker position
+  const playerI = (playerPoint.y - originPoint.y) / pxCellSize; // player position horizontal and vertical in relative to the origin point
+  const playerJ = (playerPoint.x - originPoint.x) / pxCellSize;
 
   // create boundary around the player
   const boundaryTopLeft = originPoint.add( // calculate boundaries relative to current size of boxes
@@ -170,7 +170,7 @@ function redrawGrid() {
         map.unproject(bottomRightPoint, zoom),
       ]);
 
-      const allowed = Math.abs(i - playerI) <= NEIGHBORHOOD_SIZE && // flag for interactibility
+      const allowed = Math.abs(i - playerI) < NEIGHBORHOOD_SIZE && // flag for interactibility
         Math.abs(j - playerJ) <= NEIGHBORHOOD_SIZE; // condition: if player's horizontal and vertical distance from a cell is not greater than neighborhood size.
 
       const bg = leaflet.rectangle(bounds, {
@@ -325,7 +325,6 @@ function getColorsForTokenValue(tokenValue: number) {
   // index 0 -> value 2 (2^1)
   const index = Math.max(0, Math.floor(exp) - 1);
 
-
   const palette: { fill: string; stroke: string }[] = [
     { fill: "#e4db82ff", stroke: "#b59f00" }, // 2
     { fill: "#ff9800", stroke: "#b25500" }, // 4
@@ -348,7 +347,39 @@ function getColorsForTokenValue(tokenValue: number) {
   }
   return { fillColor: "#000000", strokeColor: "#000000" }; // not implementing past 2048 should never reach this unless the end state broken
 }
-// ---------------- game loop ---------------- //
+
+// --------------------------------- player movement --------------------- //
+function move(dx: number, dy: number): void {
+  const zoom = map.getZoom();
+  const pxCellSize = zoom * 2; // cell size is currently being calculated by zoom * 2
+  const curLatLng = playerMarker.getLatLng();
+  const curPoint = map.project(curLatLng, zoom);
+  const newPoint = curPoint.add(
+    leaflet.point(dx * pxCellSize, dy * pxCellSize), // convert current Latitude and Longitude to pixel coordinates to be translated by onscreen pixel value of 1 cell in given direction
+  );
+  const newLatLng = map.unproject(newPoint, zoom); // unproject the pixel coordinates to set new playerMarket position
+  playerMarker.setLatLng(newLatLng);
+
+  map.panTo(newLatLng);
+  redrawGrid();
+}
+
+globalThis.addEventListener("keydown", (event: KeyboardEvent) => {
+  if (event.key === "ArrowDown") {
+    move(0, 1);
+  }
+  if (event.key === "ArrowUp") {
+    move(0, -1);
+  }
+  if (event.key === "ArrowLeft") {
+    move(-1, 0);
+  }
+  if (event.key === "ArrowRight") {
+    move(1, 0);
+  }
+});
+
+// --------------------------------- main game loop --------------------- //
 map.on("moveend zoomend", redrawGrid);
 globalThis.addEventListener("resize", () => {
   // invalidateSize tells leaflet to recalculate map dimensions
