@@ -43,11 +43,11 @@ Key gameplay challenge: Can players craft an even higher value token by moving t
 ### D3.b Steps
 
 - [x] confirm that cells actually spawn wherever the player can see (Tested Via Drag)
-- [X] implement some sort of button system or location tracking for player movement
-- [X] ensure the active radius, does in-fact, move with the player
-- [ ] create a conditional where if the player is HOLDING a token of high enough value, game ends
-- [x] change the UI at the bottom of the screen to display both the current held value, and other indicators such as "You can't pick up token (value), you are already holding a token!".
-- [ ] possibly add some effects when combining tokens to indicate to the player that they're supposed to be doing that.
+- [x] implement some sort of button system or location tracking for player movement
+- [x] ensure the active radius, does in-fact, move with the player
+- [x] create a conditional where if the player is HOLDING a token of high enough value, game ends
+- [x] change the UI at the bottom of the screen to display both the current held value, and other indicators such as "You can't pick up token (value), you are already holding a token!"
+- [x] possibly add some effects when combining tokens to indicate to the player that they're supposed to be doing that.
 - [x] add header to the top of the screen that indicates a game title and the goal of the game (What value is necessary for the end state)
 - [Moved to D3.c] change player indicator to something more interesting
 - [x] make sure the drawing order of objects such as the player, token/cache cells, and neighborhood grid is correct for design

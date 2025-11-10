@@ -13,13 +13,49 @@ body {
   background-color: #000000;
 }
 
-#map {
+#mapWrap {
+  box-sizing: border-box;
+  padding: 1rem; /* primarily to create space for the map to pulse on combinations */
+  border: 8px solid #000;
+  border-radius: 6px;
+  background: #000;
   width: 70%;
   max-width: 1200px;
   height: 80vh;
+  display: block;
+}
+
+/* make the actual map fill the interior of the wrapper */
+#map {
+  width: 100%;
+  height: 100%;
   box-sizing: border-box;
-  border: 10px solid black;
   overflow: hidden;
+  transform-origin: center;
+}
+
+/* play-once pulse animation when class is added */
+#map.mapPulse {
+  animation: mapHueGlow 1000ms linear;
+}
+
+@keyframes mapHueGlow {
+  0% {
+    filter: hue-rotate(0deg);
+    box-shadow: 0 0 0 rgba(255 120 0, 0);
+  }
+  40% {
+    filter: hue-rotate(160deg);
+    box-shadow: 0 18px 48px rgba(255 120 0, 0.18);
+  }
+  80% {
+    filter: hue-rotate(320deg);
+    box-shadow: 0 8px 30px rgba(255 120 0, 0.09);
+  }
+  100% {
+    filter: hue-rotate(360deg);
+    box-shadow: none;
+  }
 }
 
 #titleCard {
@@ -29,7 +65,7 @@ body {
 }
 
 #statusPanel {
-  width: 68.4%;
+  width: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -38,21 +74,68 @@ body {
   font-family: fantasy;
   color: aliceblue;
   background-color: #000000;
+  transition: transform 150ms ease;
+  transform-origin: center;
 }
 
+#statusPanel.status-anim {
+  animation: statusPulse 700ms linear;
+}
+
+@keyframes mapPulse {
+  0% {
+    transform: scale(1);
+    box-shadow: none;
+  }
+  20% {
+    transform: scale(1.06);
+    box-shadow: 0 6px 24px rgb(255, 0, 0);
+  }
+  40% {
+    transform: scale(1.02);
+    box-shadow: 0 10px 36px rgb(255, 0, 0);
+  }
+  60% {
+    transform: scale(1.04);
+    box-shadow: 0 6px 24px rgb(255, 48, 48);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: none;
+  }
+}
+
+/* replace malformed nested tooltip rules with proper selectors to remove white boxes */
 .leaflet-tooltip.cell-value-tooltip,
 .leaflet-tooltip.cell-value-tooltip span {
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
   padding: 0 !important;
+  box-sizing: border-box !important;
+
+  /* Centering */
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
   text-align: center !important;
-  font-size: 25px !important;
-  font-style: bold !important;
-  align-content: center !important;
-  color: #ffffff !important;
+
+  /* Sizing & typography */
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  color: #fff !important;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+
+  /* Prevent overflow */
+  min-width: 3ch !important;
+  max-width: 6ch !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
 }
 
+/* remove the default tooltip arrow/triangle */
 .leaflet-tooltip.cell-value-tooltip::before {
   display: none !important;
 }

@@ -22,8 +22,11 @@ Title_Card.innerHTML = _titleText
   .join("");
 
 const mapDiv = document.createElement("div");
+const mapWrap = document.createElement("div");
 mapDiv.id = "map";
-document.body.append(mapDiv);
+mapWrap.id = "mapWrap";
+mapWrap.appendChild(mapDiv);
+document.body.append(mapWrap);
 
 const statusPanelDiv = document.createElement("div");
 statusPanelDiv.id = "statusPanel";
@@ -31,12 +34,6 @@ document.body.append(statusPanelDiv);
 statusPanelDiv.innerHTML = "CLICK A CELL TO PICK UP A TOKEN AND BEGIN!";
 
 // --------------------------------- map and player set up ----------------- //
-/*const RANDOM_LATLNG = (() => {
-  const lat = Math.random() * 180 - 90;
-  const lng = Math.random() * 360 - 180;
-  return leaflet.latLng(lat, lng);
-})(); */
-
 const RANDOM_LATLNG = leaflet.latLng(
   36.997936938057016,
   -122.05703507501151,
@@ -90,12 +87,15 @@ const tokenCtx: TokenContext = {
   tokenMap,
   pickedCells,
   getPlayerHolding: () => playerHolding,
-  setPlayerHolding: (v) => (playerHolding = v),
+  setPlayerHolding: (v: number | null) => {
+    playerHolding = v;
+    if (v === 2048) endGame();
+  },
   statusPanelDiv,
 };
 
 function generateTokenValue(token: string) {
-  const exp = 1 + Math.floor(luck(token + ":v") * 8);
+  const exp = 1 + Math.floor(luck(token + ":v") * 10);
   return 2 ** exp; // generates values 1,2,4,8,16
 }
 
@@ -185,7 +185,7 @@ function redrawGrid() {
 
       // allow placing/combining on empty cells as well
       if (allowed) {
-        bg.on("click", () => placeGrabOrCombine(tokenCtx, i, j, true));
+        bg.on("click", () => handleInteraction(tokenCtx, i, j, true));
       }
 
       generateAndUpdateTokens(tokenCtx, i, j, bounds, allowed);
@@ -232,34 +232,21 @@ function generateAndUpdateTokens(
 
     cache.addTo(ctx.gridLayer); // draw the token cell on the grid layer
 
-    cache.on("click", () => placeGrabOrCombine(ctx, i, j, allowed));
+    cache.on("click", () => handleInteraction(ctx, i, j, allowed));
   }
 }
 
-function placeGrabOrCombine(
-  ctx: TokenContext,
-  i: number,
-  j: number,
-  allowed = true,
-) {
-  const cell = `${i},${j}`;
-  if (!allowed) {
-    return;
-  }
-
-  const holding = ctx.getPlayerHolding();
-  const hasToken = ctx.tokenMap.has(cell);
-
-  // If there's a token at the cell -> pickup or combine
-  if (hasToken) {
-    const tokenValue = ctx.tokenMap.get(cell)!;
-
-    // pick up when hands empty
-    if (holding === null) {
-      ctx.setPlayerHolding(tokenValue);
-      ctx.tokenMap.delete(cell);
-      ctx.pickedCells.add(cell);
-      ctx.statusPanelDiv.innerHTML = `
+function pickup(ctx: TokenContext, cell: string, tokenValue: number) {
+  if (ctx.getPlayerHolding() === null) {
+    ctx.setPlayerHolding(tokenValue);
+    ctx.tokenMap.delete(cell);
+    ctx.pickedCells.add(cell);
+    if (tokenValue === 2048) {
+      redrawGrid();
+      endGame();
+      return;
+    }
+    ctx.statusPanelDiv.innerHTML = `
         <div style="text-align:center;">
           <div style="color:${getColorsForTokenValue(tokenValue).fillColor};">
             HOLDING: ${String(tokenValue)}
@@ -267,33 +254,61 @@ function placeGrabOrCombine(
           <div>CLICK TO PLACE ON AN EMPTY CELL OR MERGE WITH AN IDENTICAL CELL</div>
         </div>
       `;
-      redrawGrid();
-      return;
+    redrawGrid();
+    return;
+  }
+  return;
+}
+
+function combine(
+  ctx: TokenContext,
+  cell: string,
+  tokenValue: number,
+  currentHolding: number,
+) {
+  if (currentHolding === tokenValue) {
+    const combined = tokenValue * 2;
+    ctx.tokenMap.set(cell, combined);
+    ctx.setPlayerHolding(null);
+    ctx.statusPanelDiv.innerHTML = `
+        <div style="text-align:center;">
+          <div>HOLDING: X</div>
+          <div style="color:${getColorsForTokenValue(combined).fillColor};">
+            YOU'VE COMBINED TWO CELLS TO CREATE: ${String(combined)}
+          </div>
+        </div>
+      `;
+
+    const st = ctx.statusPanelDiv;
+    st.classList.remove("status-anim");
+    void st.offsetWidth;
+    st.classList.add("status-anim");
+    st.addEventListener(
+      "animationend",
+      () => st.classList.remove("status-anim"),
+      { once: true },
+    );
+
+    const mapElement = document.getElementById("map");
+    if (mapElement) {
+      mapElement.classList.remove("mapPulse");
+      void mapElement.offsetWidth;
+      mapElement.classList.add("mapPulse");
+      mapElement.addEventListener(
+        "animationend",
+        () => mapElement.classList.remove("mapPulse"),
+        { once: true },
+      );
     }
 
-    // combine if identical
-    if (holding === tokenValue) {
-      const combined = tokenValue * 2;
-      ctx.tokenMap.set(cell, combined);
-      ctx.setPlayerHolding(null);
-      ctx.statusPanelDiv.innerHTML = `
-      <div style="text-align:center;">
-        <div>HOLDING: X</div>
-        <div style="color:${
-        getColorsForTokenValue(combined).fillColor
-      };">YOU'VE COMBINED TWO CELLS TO CREATE: ${String(combined)}</div>
-      </div>
-    `;
-      redrawGrid();
-      return;
-    }
-
-    // otherwise refuse
+    redrawGrid();
+    return;
+  } else {
     ctx.statusPanelDiv.innerHTML = `
       <div style="text-align:center;">
         <div style="color:${
-      getColorsForTokenValue(holding).fillColor
-    };">HOLDING: ${String(holding)}</div>
+      getColorsForTokenValue(currentHolding).fillColor
+    };">HOLDING: ${String(currentHolding)}</div>
         <div style="color:${
       getColorsForTokenValue(tokenValue).fillColor
     };">CANNOT COMBINE WITH CELL: ${String(tokenValue)}</div>
@@ -301,23 +316,60 @@ function placeGrabOrCombine(
     `;
     return;
   }
+}
 
-  // No token present
-  if (holding === null) {
+function place(
+  ctx: TokenContext,
+  cell: string,
+  currentHolding: number,
+) {
+  ctx.tokenMap.set(cell, currentHolding);
+
+  if (currentHolding !== null) {
+    ctx.tokenMap.set(cell, currentHolding);
+    ctx.setPlayerHolding(null);
+    ctx.pickedCells.delete(cell);
+    ctx.statusPanelDiv.innerHTML = `
+    <div style="text-align:center;">
+      <div>HOLDING: X</div>
+      <div style="color:${getColorsForTokenValue(currentHolding).fillColor};">
+        YOU PLACED DOWN CELL: ${String(currentHolding)}
+      </div>
+    </div>
+  `;
+    redrawGrid();
+  }
+}
+
+function handleInteraction(
+  ctx: TokenContext,
+  i: number,
+  j: number,
+  allowed = true,
+) {
+  const cell = `${i},${j}`;
+  if (gameWon || !allowed) return;
+
+  const hasToken = ctx.tokenMap.has(cell);
+  const currentHolding = ctx.getPlayerHolding();
+
+  if (hasToken) {
+    const tokenValue = ctx.tokenMap.get(cell)!;
+
+    if (currentHolding === null) {
+      pickup(ctx, cell, tokenValue);
+      return;
+    }
+
+    if (tokenValue > 1 && currentHolding !== null) {
+      combine(ctx, cell, tokenValue, currentHolding);
+      return;
+    }
+  } else if (!hasToken) {
+    if (currentHolding === null) return;
+    place(ctx, cell, currentHolding);
     return;
   }
-  ctx.tokenMap.set(cell, holding);
-  ctx.setPlayerHolding(null);
-  ctx.pickedCells.delete(cell);
-  ctx.statusPanelDiv.innerHTML = `
-  <div style="text-align:center;">
-    <div>HOLDING: X</div>
-    <div style="color:${getColorsForTokenValue(holding).fillColor};">
-      YOU PLACED DOWN CELL: ${String(holding)}
-    </div>
-  </div>
-`;
-  redrawGrid();
 }
 
 function getColorsForTokenValue(tokenValue: number) {
@@ -336,7 +388,7 @@ function getColorsForTokenValue(tokenValue: number) {
     { fill: "#ff5722", stroke: "#b23b12" }, // 256
     { fill: "#8bc34a", stroke: "#558b2f" }, // 512
     { fill: "#ffc107", stroke: "#ff6f00" }, // 1024
-    { fill: "#e91e63", stroke: "#880e4f" }, // 2048
+    { fill: "#e91e63", stroke: "#880e4fff" }, // 2048
   ];
 
   if (index < palette.length) {
@@ -378,6 +430,37 @@ globalThis.addEventListener("keydown", (event: KeyboardEvent) => {
     move(1, 0);
   }
 });
+// --------------------------------- end state --------------------- //
+let gameWon = false;
+function endGame() {
+  if (gameWon) return;
+  gameWon = true;
+
+  // rebuild title with per-letter spans so existing animations still apply
+  const winText = "YOU WIN! PRESS R TO RESTART";
+  Title_Card.innerHTML = winText
+    .split("")
+    .map((ch, idx) => {
+      const char = ch === " " ? "&nbsp;" : ch;
+      return `<span style="--delay:${(idx * 0.08).toFixed(2)}s">${char}</span>`;
+    })
+    .join("");
+
+  statusPanelDiv.innerHTML = `
+    <div style="text-align:center;">
+      <div style="color:#880e4fff;">
+        YOU'VE REACHED 2048!
+      </div>
+      <div>Press R to restart the game</div>
+    </div>
+  `;
+  const restartHandler = (e: KeyboardEvent) => {
+    if (e.key.toLowerCase() === "r") {
+      location.reload();
+    }
+  };
+  globalThis.addEventListener("keydown", restartHandler, { once: true });
+}
 
 // --------------------------------- main game loop --------------------- //
 map.on("moveend zoomend", redrawGrid);
