@@ -281,16 +281,17 @@ function redrawGrid() {
     zoom,
     pxCellSize,
   );
-
-  drawNeighbourhoodRect(
-    map,
-    neighborhoodLayer,
-    originPoint,
-    playerI,
-    playerJ,
-    pxCellSize,
-    zoom,
-  );
+  if (playerHolding != null) {
+    drawNeighbourhoodRect(
+      map,
+      neighborhoodLayer,
+      originPoint,
+      playerI,
+      playerJ,
+      pxCellSize,
+      zoom,
+    );
+  }
   iterateVisibleCellsAndDraw(
     map,
     gridLayer,
@@ -326,16 +327,15 @@ function generateAndUpdateTokens(
   if (ctx.tokenMap.has(token)) { // if the cell has a token generated, draw it
     const tokenValue = ctx.tokenMap.get(token)!;
     const { fillColor, strokeColor } = getColorsForTokenValue(tokenValue);
-
     const cache = leaflet.rectangle(bounds, {
       color: strokeColor,
-      weight: 2,
+      weight: allowed ? 4 : 2,
       fill: true,
       fillColor,
       fillOpacity: 0.9,
       interactive: allowed,
+      className: allowed ? "rect-allowed" : "rect-default",
     });
-
     cache.bindTooltip(String(tokenValue), { // indicator for token value
       permanent: true,
       direction: "center",
@@ -453,6 +453,7 @@ function place(
       </div>
     </div>
   `;
+    neighborhoodLayer.clearLayers();
     redrawGrid();
   }
 }

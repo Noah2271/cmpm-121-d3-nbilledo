@@ -198,3 +198,10 @@ body {
     color: hsl(205, 100%, 50%);
   }
 }
+
+.rect-allowed {
+  filter: drop-shadow(0 0 6px rgba(255, 157, 0, 0.8))
+          drop-shadow(0 0 12px rgba(255, 255, 150, 0.5));
+  transition: filter 2s ease, transform 2s ease;
+}
+
