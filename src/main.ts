@@ -4,11 +4,12 @@ import "./_leafletWorkaround.ts";
 import luck from "./_luck.ts";
 import "./style.css";
 
-// --------------------------------- game constants & setup --------------------- //
+// --------------------------------- game constants --------------------- //
 const GAMEPLAY_ZOOM = 19;
 const NEIGHBORHOOD_SIZE = 6;
 const CACHE_SPAWN_PROBABILITY = 0.1;
 
+// --------------------------------- div elements --------------------- //
 const Title_Card = document.createElement("div");
 Title_Card.id = "titleCard";
 document.body.append(Title_Card);
@@ -26,7 +27,23 @@ const mapWrap = document.createElement("div");
 mapDiv.id = "map";
 mapWrap.id = "mapWrap";
 mapWrap.appendChild(mapDiv);
-document.body.append(mapWrap);
+
+// small controls box to the left of the map
+const controlsBox = document.createElement("div");
+controlsBox.id = "controlsBox";
+controlsBox.innerHTML = `
+  <div class="controls-title">CONTROLS:</div>
+  <div class="controls-text">MOVE WITH THE ARROW KEYS</div>
+`;
+
+// layout wrapper to hold controls + map side-by-side
+const layout = document.createElement("div");
+layout.id = "layout";
+layout.appendChild(controlsBox);
+layout.appendChild(mapWrap);
+
+// append the layout (instead of appending mapWrap directly)
+document.body.append(layout);
 
 const statusPanelDiv = document.createElement("div");
 statusPanelDiv.id = "statusPanel";
@@ -34,16 +51,17 @@ document.body.append(statusPanelDiv);
 statusPanelDiv.innerHTML = "CLICK A CELL TO PICK UP A TOKEN AND BEGIN!";
 
 // --------------------------------- map and player set up ----------------- //
-const RANDOM_LATLNG = leaflet.latLng(
+const START_LATLNG = leaflet.latLng(
   36.997936938057016,
   -122.05703507501151,
 );
 
 const map = leaflet.map(mapDiv, {
-  center: RANDOM_LATLNG,
+  center: START_LATLNG,
   zoom: GAMEPLAY_ZOOM,
   minZoom: GAMEPLAY_ZOOM,
   maxZoom: GAMEPLAY_ZOOM,
+  keyboard: false, // no keyboard panning. Interferes with manual movement.
   zoomControl: false, // Not currently implemented, might not implement it.
   scrollWheelZoom: false,
 });
@@ -61,7 +79,7 @@ leaflet.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
 }).addTo(map);
 
-const playerMarker = leaflet.marker(RANDOM_LATLNG, { pane: "playerPane" })
+const playerMarker = leaflet.marker(START_LATLNG, { pane: "playerPane" })
   .addTo(map);
 playerMarker.addTo(map);
 
@@ -73,7 +91,8 @@ const tokenMap = new Map<string, number>(); // map of i-j cell values and a toke
 const pickedCells = new Set<string>(); // a set of i-j values that indicate which cells already had a token on it that has been grabbed.
 let playerHolding: number | null = null; // player holding state variable
 
-type TokenContext = { // argument objects for token logic
+// Argument objects for token logic
+type TokenContext = {
   gridLayer: leaflet.LayerGroup;
   tokenMap: Map<string, number>;
   pickedCells: Set<string>;
@@ -94,46 +113,63 @@ const tokenCtx: TokenContext = {
   statusPanelDiv,
 };
 
+// Calculate a random value 2-16 for a given token. Return the value.
 function generateTokenValue(token: string) {
-  const exp = 1 + Math.floor(luck(token + ":v") * 10);
-  return 2 ** exp; // generates values 1,2,4,8,16
+  const exp = 1 + Math.floor(luck(token + ":v") * 3);
+  return 2 ** exp; // generates values 2,4,8,16
 }
 
-function redrawGrid() {
-  gridLayer.clearLayers(); // clear the grid layer
-  neighborhoodLayer.clearLayers();
-
-  const origin = RANDOM_LATLNG; // the fixed origin generated at the start of the program that the entire grid is aligned to
+// Grab and return map grid values and computer cell size.
+function computeGridParams(map: leaflet.Map, origin: leaflet.LatLng) {
   const zoom = map.getZoom();
-  const originPoint = map.project(origin, zoom); // convert origin to pixel coordinates
-  const pxScreenBoundary = map.getPixelBounds(); // screen view boundary in pixels
-  const pxCellSize = map.getZoom() * 2; // dynamic for later possible implementation of zooming in, out
-  const playerPoint = map.project(playerMarker.getLatLng(), zoom); // use current player marker position
-  const playerI = (playerPoint.y - originPoint.y) / pxCellSize; // player position horizontal and vertical in relative to the origin point
-  const playerJ = (playerPoint.x - originPoint.x) / pxCellSize;
+  const originPoint = map.project(origin, zoom);
+  const pxScreenBoundary = map.getPixelBounds();
+  const pxCellSize = zoom * 2;
+  return { zoom, originPoint, pxScreenBoundary, pxCellSize };
+}
 
-  // create boundary around the player
-  const boundaryTopLeft = originPoint.add( // calculate boundaries relative to current size of boxes
+// Takes the map coordinates and projects the player position on it to pixel coordinates.
+function computePlayerGridPosition(
+  map: leaflet.Map,
+  playerMarker: leaflet.Marker,
+  originPoint: leaflet.Point,
+  zoom: number,
+  pxCellSize: number,
+) {
+  const playerPoint = map.project(playerMarker.getLatLng(), zoom); // projects position into pixel coordinates, which are translated into distance in terms of cells
+  const playerI = (playerPoint.y - originPoint.y) / pxCellSize;
+  const playerJ = (playerPoint.x - originPoint.x) / pxCellSize;
+  return { playerPoint, playerI, playerJ }; // return the distance
+}
+
+// Draws the active interactable radius around the player position.
+function drawNeighbourhoodRect(
+  map: leaflet.Map,
+  neighbourhoodLayer: leaflet.LayerGroup,
+  originPoint: leaflet.Point,
+  playerI: number,
+  playerJ: number,
+  pxCellSize: number,
+  zoom: number,
+) {
+  neighbourhoodLayer.clearLayers();
+  const topLeft = originPoint.add(
     leaflet.point(
       (playerJ - NEIGHBORHOOD_SIZE) * pxCellSize,
       (playerI - NEIGHBORHOOD_SIZE) * pxCellSize,
     ),
   );
-
-  const boundaryBottomRight = originPoint.add(
+  const bottomRight = originPoint.add(
     leaflet.point(
       (playerJ + NEIGHBORHOOD_SIZE) * pxCellSize,
       (playerI + NEIGHBORHOOD_SIZE) * pxCellSize,
     ),
   );
-
-  const neighbourhoodBounds = leaflet.latLngBounds([ // convert back to coordinates for leaflet to draw boundary rectangle
-    map.unproject(boundaryTopLeft, zoom),
-    map.unproject(boundaryBottomRight, zoom),
+  const bounds = leaflet.latLngBounds([
+    map.unproject(topLeft, zoom),
+    map.unproject(bottomRight, zoom),
   ]);
-
-  // when drawing the neighbourhood rectangle use the pane option:
-  const neighbourhoodRect = leaflet.rectangle(neighbourhoodBounds, {
+  const rect = leaflet.rectangle(bounds, {
     pane: "neighbourhoodPane",
     color: "#000000ff",
     weight: 2,
@@ -141,58 +177,134 @@ function redrawGrid() {
     interactive: false,
     dashArray: "5 5",
   });
-  neighbourhoodRect.addTo(neighborhoodLayer); // draw the rectangle on the layer
+  rect.addTo(neighbourhoodLayer);
+}
 
+// Draws a singular rectangle cell at the given i and j values.
+function drawCellAndToken(
+  map: leaflet.Map,
+  gridLayer: leaflet.LayerGroup,
+  ctx: TokenContext,
+  originPoint: leaflet.Point,
+  i: number,
+  j: number,
+  pxCellSize: number,
+  zoom: number,
+  playerI: number,
+  playerJ: number,
+) {
+  const topLeftPoint = originPoint.add(
+    leaflet.point(j * pxCellSize, i * pxCellSize),
+  );
+  const bottomRightPoint = originPoint.add(
+    leaflet.point((j + 1) * pxCellSize, (i + 1) * pxCellSize),
+  );
+  const bounds = leaflet.latLngBounds([
+    map.unproject(topLeftPoint, zoom),
+    map.unproject(bottomRightPoint, zoom),
+  ]);
+  const allowed = Math.abs(i - playerI) < NEIGHBORHOOD_SIZE && // Checks player distance to see if interaction is allowed.
+    Math.abs(j - playerJ) < NEIGHBORHOOD_SIZE;
+
+  const bg = leaflet.rectangle(bounds, {
+    color: "#000000ff",
+    weight: 1,
+    opacity: 0.1,
+    fill: true,
+    fillOpacity: 0,
+    interactive: allowed,
+  });
+  bg.addTo(gridLayer);
+  if (allowed) {
+    bg.on("click", () => handleInteraction(ctx, i, j, true));
+  }
+
+  generateAndUpdateTokens(ctx, i, j, bounds, allowed);
+}
+
+// Calling function for drawCellAndToken, calling the function to fill visible screen with cells from the top left to the bottom right.
+function iterateVisibleCellsAndDraw(
+  map: leaflet.Map,
+  gridLayer: leaflet.LayerGroup,
+  ctx: TokenContext,
+  originPoint: leaflet.Point,
+  pxScreenBoundary: leaflet.Bounds,
+  pxCellSize: number,
+  zoom: number,
+  playerI: number,
+  playerJ: number,
+) {
   const jMin = Math.floor(
-    (pxScreenBoundary.min!.x - originPoint.x) / pxCellSize, // calculate column indices for visible cells to origin
+    (pxScreenBoundary.min!.x - originPoint.x) / pxCellSize,
   );
   const jMax = Math.floor(
     (pxScreenBoundary.max!.x - originPoint.x) / pxCellSize,
   );
   const iMin = Math.floor(
-    (pxScreenBoundary.min!.y - originPoint.y) / pxCellSize, // calculate row indices for visible cells relative to origin
+    (pxScreenBoundary.min!.y - originPoint.y) / pxCellSize,
   );
   const iMax = Math.floor(
     (pxScreenBoundary.max!.y - originPoint.y) / pxCellSize,
   );
 
-  for (let i = iMin; i <= iMax; i++) { // iterate through the visible cells
+  for (let i = iMin; i <= iMax; i++) {
     for (let j = jMin; j <= jMax; j++) {
-      const topLeftPoint = originPoint.add( // calculate cell top left and right bottom boundaries before converting back to coordinate positions to be drawn by leaflet
-        leaflet.point(j * pxCellSize, i * pxCellSize),
+      drawCellAndToken(
+        map,
+        gridLayer,
+        ctx,
+        originPoint,
+        i,
+        j,
+        pxCellSize,
+        zoom,
+        playerI,
+        playerJ,
       );
-      const bottomRightPoint = originPoint.add(
-        leaflet.point((j + 1) * pxCellSize, (i + 1) * pxCellSize),
-      );
-
-      const bounds = leaflet.latLngBounds([
-        map.unproject(topLeftPoint, zoom),
-        map.unproject(bottomRightPoint, zoom),
-      ]);
-
-      const allowed = Math.abs(i - playerI) < NEIGHBORHOOD_SIZE && // flag for interactibility
-        Math.abs(j - playerJ) <= NEIGHBORHOOD_SIZE; // condition: if player's horizontal and vertical distance from a cell is not greater than neighborhood size.
-
-      const bg = leaflet.rectangle(bounds, {
-        color: "#000000ff",
-        weight: 1,
-        opacity: 0.1,
-        fill: true,
-        fillOpacity: 0,
-        interactive: allowed,
-      });
-      bg.addTo(gridLayer);
-
-      // allow placing/combining on empty cells as well
-      if (allowed) {
-        bg.on("click", () => handleInteraction(tokenCtx, i, j, true));
-      }
-
-      generateAndUpdateTokens(tokenCtx, i, j, bounds, allowed);
     }
   }
 }
 
+// Main redraw function for movement or zoom, zoom not implemented
+function redrawGrid() {
+  gridLayer.clearLayers();
+
+  const origin = START_LATLNG;
+  const { zoom, originPoint, pxScreenBoundary, pxCellSize } = computeGridParams(
+    map,
+    origin,
+  );
+  const { playerI, playerJ } = computePlayerGridPosition(
+    map,
+    playerMarker,
+    originPoint,
+    zoom,
+    pxCellSize,
+  );
+
+  drawNeighbourhoodRect(
+    map,
+    neighborhoodLayer,
+    originPoint,
+    playerI,
+    playerJ,
+    pxCellSize,
+    zoom,
+  );
+  iterateVisibleCellsAndDraw(
+    map,
+    gridLayer,
+    tokenCtx,
+    originPoint,
+    pxScreenBoundary,
+    pxCellSize,
+    zoom,
+    playerI,
+    playerJ,
+  );
+}
+
+// Function for deciding whether to generate a token in a cell, and drawing it if so
 function generateAndUpdateTokens(
   ctx: TokenContext,
   i: number,
@@ -236,6 +348,8 @@ function generateAndUpdateTokens(
   }
 }
 
+// --------------------------------- interaction logic --------------------- //
+// Player pickup logic
 function pickup(ctx: TokenContext, cell: string, tokenValue: number) {
   if (ctx.getPlayerHolding() === null) {
     ctx.setPlayerHolding(tokenValue);
@@ -260,6 +374,7 @@ function pickup(ctx: TokenContext, cell: string, tokenValue: number) {
   return;
 }
 
+// Player combine logic
 function combine(
   ctx: TokenContext,
   cell: string,
@@ -318,6 +433,7 @@ function combine(
   }
 }
 
+// Player place logic
 function place(
   ctx: TokenContext,
   cell: string,
@@ -341,6 +457,7 @@ function place(
   }
 }
 
+// Main interaction handler
 function handleInteraction(
   ctx: TokenContext,
   i: number,
@@ -372,6 +489,7 @@ function handleInteraction(
   }
 }
 
+// Tile colormapping logic
 function getColorsForTokenValue(tokenValue: number) {
   const exp = Math.log2(tokenValue);
   // index 0 -> value 2 (2^1)
