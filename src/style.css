@@ -14,7 +14,7 @@ body {
 }
 
 #layout {
-  position: relative; /* make controls absolute relative to this container */
+  position: relative;
   display: flex;
   gap: 1rem;
   align-items: flex-start;
@@ -25,11 +25,10 @@ body {
   overflow: visible;
 }
 
-/* keep controls visually on top but removed from flow so they don't resize the map */
 #controlsBox {
   position: absolute;
-  left: 1rem; /* adjust horizontal offset from layout edge */
-  top: 1rem; /* adjust vertical offset */
+  left: 1rem;
+  top: 1rem;
   z-index: 800;
   flex: 0 0 auto;
   font-family: fantasy;
@@ -40,10 +39,12 @@ body {
   padding: 0.75rem;
   border-radius: 6px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-  text-align: left;
+  text-align: center;
+  display: column;
+  align-items: center;
+  justify-content: center;
 }
 
-/* keep the map wrapper sizing unchanged */
 #mapWrap {
   flex: 0 0 70%;
   width: 70%;
@@ -52,7 +53,6 @@ body {
   display: block;
 }
 
-/* map fills the wrapper */
 #map {
   width: 100%;
   height: 100%;
@@ -61,9 +61,7 @@ body {
   transform-origin: center;
 }
 
-/* play-once pulse animation when class is added */
 #map.mapPulse {
-  /* soft green glow animation */
   animation: mapGreenGlow 900ms ease-out;
 }
 
@@ -74,7 +72,6 @@ body {
     transform: scale(1);
   }
   40% {
-    /* subtle hue shift toward green + soft glow */
     filter: hue-rotate(80deg);
     box-shadow: 0 18px 48px rgba(34, 197, 94, 0.18);
     transform: scale(1.01);
@@ -138,7 +135,6 @@ body {
   }
 }
 
-/* replace malformed nested tooltip rules with proper selectors to remove white boxes */
 .leaflet-tooltip.cell-value-tooltip,
 .leaflet-tooltip.cell-value-tooltip span {
   background: transparent !important;
@@ -146,21 +142,16 @@ body {
   box-shadow: none !important;
   padding: 0 !important;
   box-sizing: border-box !important;
-
-  /* Centering */
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
   text-align: center !important;
-
-  /* Sizing & typography */
   font-size: 16px !important;
   font-weight: 700 !important;
   color: #fff !important;
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1;
 
-  /* Prevent overflow */
   min-width: 3ch !important;
   max-width: 6ch !important;
   white-space: nowrap !important;
@@ -168,7 +159,6 @@ body {
   text-overflow: ellipsis !important;
 }
 
-/* remove the default tooltip arrow/triangle */
 .leaflet-tooltip.cell-value-tooltip::before {
   display: none !important;
 }
@@ -216,6 +206,42 @@ body {
   animation: neighbourhoodBlink 1400ms ease-in-out infinite;
 }
 
+button {
+  font-family: Impact, "Arial Black", sans-serif;
+  font-size: 12px;
+  color: #000;
+  background-color: #fff;
+  border: 2px solid #000;
+  padding: 6px 12px;
+  margin: 2px;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 #000;
+  transition: all 0.1s ease-in-out;
+  text-transform: uppercase;
+  width: 80px;
+  text-align: center;
+  touch-action: manipulation;
+}
+
+button:hover {
+  background-color: #ddd;
+}
+
+button:active {
+  transform: translate(2px, 2px);
+  box-shadow: none;
+}
+
+#restart {
+  background-color: #ff5c5c;
+  border-color: #000;
+  color: #000000;
+}
+
+#restart:hover {
+  background-color: #e04848;
+}
+
 @keyframes neighbourhoodBlink {
   0% {
     stroke-opacity: 0;
@@ -238,8 +264,8 @@ body {
   filter: drop-shadow(0 8px 14px rgb(242, 35, 35));
 }
 
+/* MOBILE UI */
 @media (max-width: 768px) {
-  /* Mobile styles */
   #layout {
     flex-direction: column;
     align-items: center;
@@ -249,22 +275,26 @@ body {
     font-family: Impact, "Arial Black", sans-serif;
     position: static;
     width: auto;
-    font-size: 10px;
-    margin-top: 2rem;
+    font-size: 12px;
+    text-align: center;
+    display: column;
+    align-items: center;
+    justify-content: center;
   }
 
   #mapWrap {
     flex: 0 0 90%;
     width: 90%;
-    height: 40vh;
+    height: 15vh;
+    margin-top: 5rem;
   }
 
   #statusPanel {
     font-family: Impact, "Arial Black", sans-serif;
     position: static;
     width: auto;
-    font-size: 22px;
-    margin-top: 7rem;
+    font-size: 15px;
+    margin-top: 8rem;
     display: column;
   }
 
@@ -273,7 +303,7 @@ body {
     font-size: 22px;
     width: 90%;
     letter-spacing: 1px;
-    padding: 0.5rem;
+    margin-bottom: 4rem;
     text-align: center;
     display: column;
     align-items: center;

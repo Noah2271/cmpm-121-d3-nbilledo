@@ -18,15 +18,15 @@ Simple grid-based token game built for CMPM 121 D3.
   - Improved status UI with clearer feedback.
   - Cell merge effects.
   - Better centered cell value text.
-- D3.c: In Progress
-  - Cell state saving for value and whether or not it has been picked from by the player
-  - Switch player position calculation using cell size as units, so the player can move off the exact lines of the grid.
-  - Switch from a radius to actual cell indicators for interaction.
-  - A better, or more originalp player icon/indicator.
-- D4.d: Not Started, Plan Below
-  - Game save state for when the game is closed at any given moment.
-  - Have the game start, and track on the players actual map location.
-  - Option to restart the game whenever the player wants so they do not get trapped in their current save.
+- D3.c: Completed
+  - Cell state saving for value and whether or not it has been picked from by the player. Only for current session.
+  - Radius indication now presented to the user via which cells are colored and which are not. Still uses radius box for clear placement radius.
+  - Player icon is now a circle that color matches to the current held value.
+  - Mobile UI support via css media query and viewport meta tag.
+- D4.d: In Progress
+  - On game start, request geolocation form the player. If denied, allow manual control. If approved, disable.
+  - Add cross-session state persistence for cells, location, and current held value.
+  - Panning and radius grid snap positional threshold to keep the game from redrawing the grid constantly.
 
 ## Features implemented
 
@@ -34,6 +34,8 @@ Simple grid-based token game built for CMPM 121 D3.
 - Interactable neighborhood around the player that moves with the player.
 - Pick up, place, and combine mechanics.
 - Token visuals and value tooltips.
-- Arrow Movement Controls.
+- Button movement controls
 - Cell merge effects, and color effects for player actions.
 - Game end state when the player crafts and creates token 2048.
+- Mobile UI support
+- Game reset via restart button

@@ -6,7 +6,7 @@ import "./style.css";
 
 // --------------------------------- game constants --------------------- //
 const GAMEPLAY_ZOOM = 19;
-const NEIGHBORHOOD_SIZE = 6;
+const NEIGHBORHOOD_SIZE = 4;
 const CACHE_SPAWN_PROBABILITY = 0.1;
 let playerHolding: number | null = null;
 
@@ -43,12 +43,20 @@ document.body.append(Title_Card);
 document.body.append(layout);
 document.body.append(statusPanelDiv);
 mapWrap.appendChild(mapDiv);
-layout.appendChild(controlsBox);
 layout.appendChild(mapWrap);
+layout.appendChild(controlsBox);
 
 controlsBox.innerHTML = `
-  <div class="controls-title">CONTROLS:</div>
-  <div class="controls-text">MOVE WITH THE ARROW KEYS</div>
+  <div class="controls-title">CONTROLS</div>
+  <div id = "moveControls">
+  <button id = "move-up"> UP</button>
+  <div>
+  <button id = "move-left"> LEFT</button><button id = "move-right"> RIGHT</button>
+  </div>
+  <button id = "move-down"> DOWN</button>
+  </div>
+  <br>
+  <button id = "restart"> RESTART GAME</button>
 `;
 statusPanelDiv.innerHTML = "CLICK A CELL TO PICK UP A TOKEN AND BEGIN!";
 
@@ -61,6 +69,7 @@ const START_LATLNG = leaflet.latLng(
 const map = leaflet.map(mapDiv, {
   center: START_LATLNG,
   zoom: GAMEPLAY_ZOOM,
+  zoomControl: false,
   minZoom: GAMEPLAY_ZOOM,
   maxZoom: GAMEPLAY_ZOOM,
   keyboard: false, // no keyboard panning. Interferes with manual movement.
@@ -209,6 +218,7 @@ function playCombineAnimation(ctx: typeof tokenCtx) {
   }
 }
 
+// inset latlng bounds for stroke handling
 function insetBounds(
   { map }: GridEnvironment,
   bounds: leaflet.LatLngBounds,
@@ -582,27 +592,22 @@ function move(dx: number, dy: number): void {
   redrawGrid();
 }
 
-globalThis.addEventListener("keydown", (event: KeyboardEvent) => {
-  if (event.key === "ArrowDown" && !gameWon) {
-    move(0, 1);
-  }
-  if (event.key === "ArrowUp" && !gameWon) {
-    move(0, -1);
-  }
-  if (event.key === "ArrowLeft" && !gameWon) {
-    move(-1, 0);
-  }
-  if (event.key === "ArrowRight" && !gameWon) {
-    move(1, 0);
-  }
-});
+(document.getElementById("move-right") as HTMLButtonElement).onclick = () =>
+  move(1, 0);
+(document.getElementById("move-left") as HTMLButtonElement).onclick = () =>
+  move(-1, 0);
+(document.getElementById("move-up") as HTMLButtonElement).onclick = () =>
+  move(0, -1);
+(document.getElementById("move-down") as HTMLButtonElement).onclick = () =>
+  move(0, 1);
+(document.getElementById("restart") as HTMLButtonElement).onclick = () =>
+  location.reload();
+
 // --------------------------------- end state --------------------- //
 let gameWon = false;
 function endGame() {
   if (gameWon) return;
   gameWon = true;
-
-  // rebuild title with per-letter spans so existing animations still apply
   const winText = "YOU WIN! PRESS R TO RESTART";
   Title_Card.innerHTML = winText
     .split("")
@@ -617,15 +622,9 @@ function endGame() {
       <div style="color:#880e4fff;">
         YOU'VE REACHED 2048!
       </div>
-      <div>Press R to restart the game</div>
+      <div>Restart the game to play again!</div>
     </div>
   `;
-  const restartHandler = (e: KeyboardEvent) => {
-    if (e.key.toLowerCase() === "r") {
-      location.reload();
-    }
-  };
-  globalThis.addEventListener("keydown", restartHandler, { once: true });
 }
 
 // --------------------------------- main game loop --------------------- //

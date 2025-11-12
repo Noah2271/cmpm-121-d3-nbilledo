@@ -66,8 +66,8 @@ Key gameplay challenge: Can you fix a gameplay bug where players can farm tokens
 - [x] Change the player indicator to something more interesting.
 - [x] Add viewport meta tag to HTML
 - [x] Create CSS media query for mobile
-- [ ] Add on-screen directional button controls
-- [ ] Test on actual mobile device
+- [x] Add on-screen directional button controls
+- [x] Test on actual mobile device
 
 ## D4.d Gameplay across real-world space and time
 
@@ -76,4 +76,8 @@ Key gameplay challenge: Can the user test the game with multiple gameplay sesiso
 
 ## D3.d Steps
 
-- [ ] Update the player position calculation (right now it's explicitly using cells as units) to allow the player a better range of movement for later geo-locational tracking.
+- [ ] State Persistence: Identify what game state characteristics need to save on close
+- [ ] Add geolocation permission request, implement watchPosition for player marker, handle permission denied case. Possibly disable manual controls when permission granted
+- [ ] Convert real world lat and lng values to grid cell positions
+- [ ] Add possible toggle between GPS and manual movement
+- [ ] Period neighborhood updating only after player moves a certain distance... snap to grid behavior.
