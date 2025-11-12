@@ -200,11 +200,40 @@ body {
 }
 
 .rect-allowed {
-  filter: drop-shadow(0 0 6px rgba(255, 157, 0, 0.8)) drop-shadow(
+  filter: drop-shadow(0 0 5px rgba(0, 0, 0, 0.8)) drop-shadow(
     0
     0
-    12px
-    rgba(255, 255, 150, 0.5)
+    0px
+    rgba(0, 0, 0, 0.5)
   );
   transition: filter 2s ease, transform 2s ease;
+}
+
+.neighbourhood-rect {
+  stroke-linecap: round;
+  stroke-dasharray: 5 5;
+  stroke-opacity: 0;
+  animation: neighbourhoodBlink 1400ms ease-in-out infinite;
+}
+
+@keyframes neighbourhoodBlink {
+  0% {
+    stroke-opacity: 0;
+  }
+  25% {
+    stroke-opacity: 0.55;
+  }
+  50% {
+    stroke-opacity: 0.28;
+  }
+  75% {
+    stroke-opacity: 0.7;
+  }
+  100% {
+    stroke-opacity: 0;
+  }
+}
+
+.neighbourhood-rect.soft-glow {
+  filter: drop-shadow(0 8px 14px rgb(242, 35, 35));
 }
