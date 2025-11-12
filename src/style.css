@@ -237,3 +237,46 @@ body {
 .neighbourhood-rect.soft-glow {
   filter: drop-shadow(0 8px 14px rgb(242, 35, 35));
 }
+
+@media (max-width: 768px) {
+  /* Mobile styles */
+  #layout {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  #controlsBox {
+    font-family: Impact, "Arial Black", sans-serif;
+    position: static;
+    width: auto;
+    font-size: 10px;
+    margin-top: 2rem;
+  }
+
+  #mapWrap {
+    flex: 0 0 90%;
+    width: 90%;
+    height: 40vh;
+  }
+
+  #statusPanel {
+    font-family: Impact, "Arial Black", sans-serif;
+    position: static;
+    width: auto;
+    font-size: 22px;
+    margin-top: 7rem;
+    display: column;
+  }
+
+  #titleCard {
+    font-family: Impact, "Arial Black", sans-serif;
+    font-size: 22px;
+    width: 90%;
+    letter-spacing: 1px;
+    padding: 0.5rem;
+    text-align: center;
+    display: column;
+    align-items: center;
+    justify-content: center;
+  }
+}

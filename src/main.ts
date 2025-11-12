@@ -11,6 +11,13 @@ const CACHE_SPAWN_PROBABILITY = 0.1;
 let playerHolding: number | null = null;
 
 // --------------------------------- div elements --------------------- //
+// mobile support
+const viewport = document.createElement("meta");
+viewport.name = "viewport";
+viewport.content =
+  "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no";
+document.head.appendChild(viewport);
+
 const Title_Card = document.createElement("div");
 const mapDiv = document.createElement("div");
 const mapWrap = document.createElement("div");
@@ -164,6 +171,7 @@ function updateGridEnvironment() {
   gridEnvironment.originPoint = originPoint;
   gridEnvironment.pxScreenBoundary = pxScreenBoundary;
 }
+
 // --------------------------------- helper functions --------------------- //
 function getBoundaries(
   environment: GridEnvironment,
@@ -244,6 +252,7 @@ function getColorsForTokenValue(tokenValue: number) {
   }
   return { fillColor: "#000000", strokeColor: "#000000" }; // not implementing past 2048 should never reach this unless the end state broken
 }
+
 // --------------------------------- grid and token logic functions --------------------- //
 // Calculate a random value 2-16 for a given token. Return the value.
 function generateTokenValue(token: string) {
@@ -627,7 +636,5 @@ map.on("dragend", () => {
   _isDragging = false;
   redrawGrid(); // only redraw when user finishes dragging
 });
-
-// still handle resize normally
 
 redrawGrid();

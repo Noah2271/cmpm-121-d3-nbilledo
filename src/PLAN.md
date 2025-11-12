@@ -64,7 +64,10 @@ Key gameplay challenge: Can you fix a gameplay bug where players can farm tokens
 - [x] Possibly change the radius box, instead using the 'allowed' value of each box denoting whether or not the box has a certain effect which indicates it's in range of the player.
 - [x] Maybe look into a more efficient way to spawn tiles or add a cooldown to how fast the player can MANUALLY move across the screen via arrow controls. Too much movement loads tiles way too fast. A possible solution can also be loading in tiles after a set amount of time after manual movement stops.
 - [x] Change the player indicator to something more interesting.
-- [ ] Update the player position calculation (right now it's explicitly using cells as units) to allow the player a better range of movement for later geo-locational tracking.
+- [x] Add viewport meta tag to HTML
+- [x] Create CSS media query for mobile
+- [ ] Add on-screen directional button controls
+- [ ] Test on actual mobile device
 
 ## D4.d Gameplay across real-world space and time
 
@@ -73,4 +76,4 @@ Key gameplay challenge: Can the user test the game with multiple gameplay sesiso
 
 ## D3.d Steps
 
-- [ ] Mobile compatibility will probably make sense.
+- [ ] Update the player position calculation (right now it's explicitly using cells as units) to allow the player a better range of movement for later geo-locational tracking.
