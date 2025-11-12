@@ -8,11 +8,15 @@ import "./style.css";
 const GAMEPLAY_ZOOM = 19;
 const NEIGHBORHOOD_SIZE = 6;
 const CACHE_SPAWN_PROBABILITY = 0.1;
+let playerHolding: number | null = null;
 
 // --------------------------------- div elements --------------------- //
 const Title_Card = document.createElement("div");
-Title_Card.id = "titleCard";
-document.body.append(Title_Card);
+const mapDiv = document.createElement("div");
+const mapWrap = document.createElement("div");
+const controlsBox = document.createElement("div");
+const layout = document.createElement("div");
+const statusPanelDiv = document.createElement("div");
 const _titleText = "WORLD OF BITS - COMBINE TO A VALUE OF 2048 TO WIN!";
 Title_Card.innerHTML = _titleText
   .split("")
@@ -22,32 +26,23 @@ Title_Card.innerHTML = _titleText
   })
   .join("");
 
-const mapDiv = document.createElement("div");
-const mapWrap = document.createElement("div");
+Title_Card.id = "titleCard";
 mapDiv.id = "map";
 mapWrap.id = "mapWrap";
-mapWrap.appendChild(mapDiv);
-
-// small controls box to the left of the map
-const controlsBox = document.createElement("div");
 controlsBox.id = "controlsBox";
+layout.id = "layout";
+statusPanelDiv.id = "statusPanel";
+document.body.append(Title_Card);
+document.body.append(layout);
+document.body.append(statusPanelDiv);
+mapWrap.appendChild(mapDiv);
+layout.appendChild(controlsBox);
+layout.appendChild(mapWrap);
+
 controlsBox.innerHTML = `
   <div class="controls-title">CONTROLS:</div>
   <div class="controls-text">MOVE WITH THE ARROW KEYS</div>
 `;
-
-// layout wrapper to hold controls + map side-by-side
-const layout = document.createElement("div");
-layout.id = "layout";
-layout.appendChild(controlsBox);
-layout.appendChild(mapWrap);
-
-// append the layout (instead of appending mapWrap directly)
-document.body.append(layout);
-
-const statusPanelDiv = document.createElement("div");
-statusPanelDiv.id = "statusPanel";
-document.body.append(statusPanelDiv);
 statusPanelDiv.innerHTML = "CLICK A CELL TO PICK UP A TOKEN AND BEGIN!";
 
 // --------------------------------- map and player set up ----------------- //
@@ -62,9 +57,12 @@ const map = leaflet.map(mapDiv, {
   minZoom: GAMEPLAY_ZOOM,
   maxZoom: GAMEPLAY_ZOOM,
   keyboard: false, // no keyboard panning. Interferes with manual movement.
-  zoomControl: false, // Not currently implemented, might not implement it.
-  scrollWheelZoom: false,
 });
+
+const gridLayer = leaflet.layerGroup().addTo(map); // the actual gridlayer that tokens and empty spaces are drawn on
+const neighborhoodLayer = leaflet.layerGroup().addTo(map); // additional layer on the map to indicate to the user their interactable area
+const tokenMap = new Map<string, number>(); // map of i-j cell values and a token value used to draw tokens on the gridLayer
+const pickedCells = new Set<string>(); // a set of i-j values that indicate which cells already had a token on it that has been grabbed.
 
 // Panes for Z-ordering
 map.createPane("neighbourhoodPane");
@@ -73,10 +71,11 @@ map.createPane("neighbourhoodPane");
 map.createPane("playerPane");
 (map.getPane("playerPane") as HTMLElement).style.zIndex = "660";
 
-const gridLayer = leaflet.layerGroup().addTo(map); // the actual gridlayer that tokens and empty spaces are drawn on
-const neighborhoodLayer = leaflet.layerGroup().addTo(map); // additional layer on the map to indicate to the user their interactable area
-const tokenMap = new Map<string, number>(); // map of i-j cell values and a token value used to draw tokens on the gridLayer
-const pickedCells = new Set<string>(); // a set of i-j values that indicate which cells already had a token on it that has been grabbed.
+leaflet.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  maxZoom: GAMEPLAY_ZOOM,
+  attribution:
+    '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+}).addTo(map);
 
 const playerDivIcon = leaflet.divIcon({
   className: "player-div-icon",
@@ -92,15 +91,7 @@ const playerDivIcon = leaflet.divIcon({
 const playerMarker = leaflet.marker(START_LATLNG, {
   icon: playerDivIcon,
   interactive: false,
-  pane: "playerPane", // ensure marker renders in the player pane
-}).addTo(map);
-
-let playerHolding: number | null = null; // player holding state variable
-
-leaflet.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-  maxZoom: 19,
-  attribution:
-    '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  pane: "playerPane",
 }).addTo(map);
 
 // --------------------------------- grid and token logic argument objects --------------------- //
@@ -121,8 +112,12 @@ const tokenCtx: TokenContext = {
   getPlayerHolding: () => playerHolding,
   setPlayerHolding: (v: number | null) => {
     playerHolding = v;
-    const el = playerMarker.getElement?.() as HTMLElement | undefined;
-    const circle = el?.querySelector?.("svg circle") as SVGCircleElement | null;
+    const PlayerElement = playerMarker.getElement?.() as
+      | HTMLElement
+      | undefined;
+    const circle = PlayerElement?.querySelector?.("svg circle") as
+      | SVGCircleElement
+      | null;
     if (circle) {
       if (v == null) {
         circle.setAttribute("fill", "#616362ff"); // default color when not holding
@@ -131,8 +126,6 @@ const tokenCtx: TokenContext = {
         circle.setAttribute("fill", fillColor);
       }
     }
-
-    if (v === 2048) endGame();
   },
   statusPanelDiv,
 };
@@ -164,16 +157,93 @@ const gridEnvironment: GridEnvironment = {
 
 // Refreshes grid environment parameters, for use in redrawGrid()
 function updateGridEnvironment() {
-  const { zoom, originPoint, pxScreenBoundary, pxCellSize } = computeGridParams(
+  const { originPoint, pxScreenBoundary } = computeGridParams(
     gridEnvironment.map,
     gridEnvironment.origin,
   );
-  gridEnvironment.zoom = zoom;
   gridEnvironment.originPoint = originPoint;
   gridEnvironment.pxScreenBoundary = pxScreenBoundary;
-  gridEnvironment.pxCellSize = pxCellSize;
+}
+// --------------------------------- helper functions --------------------- //
+function getBoundaries(
+  environment: GridEnvironment,
+  topLeft: leaflet.PointExpression,
+  bottomRight: leaflet.PointExpression,
+) {
+  return (leaflet.latLngBounds([
+    environment.map.unproject(topLeft, environment.zoom),
+    environment.map.unproject(bottomRight, environment.zoom),
+  ]));
 }
 
+function playCombineAnimation(ctx: typeof tokenCtx) {
+  // combine animation player
+  const st = ctx.statusPanelDiv;
+  st.classList.remove("status-anim");
+  void st.offsetWidth;
+  st.classList.add("status-anim");
+  st.addEventListener(
+    "animationend",
+    () => st.classList.remove("status-anim"),
+    { once: true },
+  );
+
+  const mapElement = document.getElementById("map");
+  if (mapElement) {
+    mapElement.classList.remove("mapPulse");
+    void mapElement.offsetWidth;
+    mapElement.classList.add("mapPulse");
+    mapElement.addEventListener(
+      "animationend",
+      () => mapElement.classList.remove("mapPulse"),
+      { once: true },
+    );
+  }
+}
+
+function insetBounds(
+  { map }: GridEnvironment,
+  bounds: leaflet.LatLngBounds,
+  insetPixels: number,
+): leaflet.LatLngBounds {
+  const topLeftPx = map.project(bounds.getNorthWest(), map.getZoom());
+  const bottomRightPx = map.project(bounds.getSouthEast(), map.getZoom());
+  const insetOffset = leaflet.point(insetPixels, insetPixels);
+  const insetTopLeftPx = topLeftPx.add(insetOffset);
+  const insetBottomRightPx = bottomRightPx.subtract(insetOffset);
+  const insetTopLeft = map.unproject(insetTopLeftPx, map.getZoom());
+  const insetBottomRight = map.unproject(insetBottomRightPx, map.getZoom());
+  return leaflet.latLngBounds(insetTopLeft, insetBottomRight);
+}
+
+// Tile colormapping logic
+function getColorsForTokenValue(tokenValue: number) {
+  const exp = Math.log2(tokenValue);
+  // index 0 -> value 2 (2^1)
+  const index = Math.max(0, Math.floor(exp) - 1);
+
+  const palette: { fill: string; stroke: string }[] = [
+    { fill: "#e4db82ff", stroke: "#b59f00" }, // 2
+    { fill: "#ff9800", stroke: "#b25500" }, // 4
+    { fill: "#f44336", stroke: "#b71c1c" }, // 8
+    { fill: "#4caf50", stroke: "#1b5e20" }, // 16
+    { fill: "#2196f3", stroke: "#0b79d0" }, // 32
+    { fill: "#9c27b0", stroke: "#6a1b9a" }, // 64
+    { fill: "#00bcd4", stroke: "#007c91" }, // 128
+    { fill: "#ff5722", stroke: "#b23b12" }, // 256
+    { fill: "#8bc34a", stroke: "#558b2f" }, // 512
+    { fill: "#ffc107", stroke: "#ff6f00" }, // 1024
+    { fill: "#e91e63", stroke: "#880e4fff" }, // 2048
+  ];
+
+  if (index < palette.length) {
+    return {
+      fillColor: palette[index].fill,
+      strokeColor: palette[index].stroke,
+    };
+  }
+  return { fillColor: "#000000", strokeColor: "#000000" }; // not implementing past 2048 should never reach this unless the end state broken
+}
 // --------------------------------- grid and token logic functions --------------------- //
 // Calculate a random value 2-16 for a given token. Return the value.
 function generateTokenValue(token: string) {
@@ -183,17 +253,19 @@ function generateTokenValue(token: string) {
 
 // Grab and return map grid values and computer cell size.
 function computeGridParams(map: leaflet.Map, origin: leaflet.LatLng) {
-  const zoom = map.getZoom();
-  const originPoint = map.project(origin, zoom);
-  const pxScreenBoundary = map.getPixelBounds();
-  const pxCellSize = zoom * 2;
-  return { zoom, originPoint, pxScreenBoundary, pxCellSize };
+  return {
+    zoom: map.getZoom(),
+    originPoint: map.project(origin, map.getZoom()),
+    pxScreenBoundary: map.getPixelBounds(),
+  };
 }
 
 // compute player grid position using GridEnviroment
 function computePlayerGridPosition(environment: GridEnvironment) {
-  const map = environment.map;
-  const playerPoint = map.project(playerMarker.getLatLng(), environment.zoom);
+  const playerPoint = environment.map.project(
+    playerMarker.getLatLng(),
+    environment.zoom,
+  );
   const playerI = (playerPoint.y - environment.originPoint.y) /
     environment.pxCellSize;
   const playerJ = (playerPoint.x - environment.originPoint.x) /
@@ -208,23 +280,24 @@ function drawNeighbourhoodRect(
   playerJ: number,
 ) {
   environment.neighborhoodLayer.clearLayers();
+
   const topLeft = environment.originPoint.add(
     leaflet.point(
-      (playerJ - NEIGHBORHOOD_SIZE) * environment.pxCellSize,
-      (playerI - NEIGHBORHOOD_SIZE) * environment.pxCellSize,
+      (playerJ - NEIGHBORHOOD_SIZE + 1) * environment.pxCellSize,
+      (playerI - NEIGHBORHOOD_SIZE + 1) * environment.pxCellSize,
     ),
   );
+
   const bottomRight = environment.originPoint.add(
     leaflet.point(
       (playerJ + NEIGHBORHOOD_SIZE) * environment.pxCellSize,
       (playerI + NEIGHBORHOOD_SIZE) * environment.pxCellSize,
     ),
   );
-  const bounds = leaflet.latLngBounds([
-    environment.map.unproject(topLeft, environment.zoom),
-    environment.map.unproject(bottomRight, environment.zoom),
-  ]);
-  const rect = leaflet.rectangle(bounds, {
+
+  const InteractableBounds = getBoundaries(environment, topLeft, bottomRight);
+
+  const rect = leaflet.rectangle(InteractableBounds, {
     pane: "neighbourhoodPane",
     color: "#000000ff",
     weight: 2,
@@ -244,21 +317,19 @@ function drawCellAndToken(
   playerI: number,
   playerJ: number,
 ) {
-  const topLeftPoint = environment.originPoint.add(
+  const topLeft = environment.originPoint.add(
     leaflet.point(j * environment.pxCellSize, i * environment.pxCellSize),
   );
-  const bottomRightPoint = environment.originPoint.add(
+  const bottomRight = environment.originPoint.add(
     leaflet.point(
       (j + 1) * environment.pxCellSize,
       (i + 1) * environment.pxCellSize,
     ),
   );
-  const bounds = leaflet.latLngBounds([
-    environment.map.unproject(topLeftPoint, environment.zoom),
-    environment.map.unproject(bottomRightPoint, environment.zoom),
-  ]);
-  const allowed = Math.abs(i - playerI) < NEIGHBORHOOD_SIZE &&
-    Math.abs(j - playerJ) < NEIGHBORHOOD_SIZE;
+
+  const bounds = getBoundaries(environment, topLeft, bottomRight);
+  const allowed = Math.abs(i - Math.round(playerI)) < NEIGHBORHOOD_SIZE &&
+    Math.abs(j - Math.round(playerJ)) < NEIGHBORHOOD_SIZE;
 
   const bg = leaflet.rectangle(bounds, {
     color: "#000000ff",
@@ -341,54 +412,30 @@ function generateAndUpdateTokens(
   }
 
   if (ctx.tokenMap.has(token)) {
-    const tokenValue = ctx.tokenMap.get(token)!;
-    const { fillColor, strokeColor } = getColorsForTokenValue(tokenValue);
-    const stroke = allowed ? 6 : 4;
-    const insetPx = Math.max(0, stroke / 2);
+    const { fillColor, strokeColor } = getColorsForTokenValue(
+      ctx.tokenMap.get(token)!,
+    );
+    const insetPx = Math.max(0, (allowed ? 6 : 4) / 2);
     const tokenBounds = insetBounds(environment, bounds, insetPx) || bounds;
 
-    const cache = leaflet.rectangle(tokenBounds, {
+    const tokenCell = leaflet.rectangle(tokenBounds, {
       color: allowed ? strokeColor : "#342e2eff",
-      weight: stroke,
+      weight: allowed ? 6 : 4,
       fill: true,
       fillColor: allowed ? fillColor : "#888888",
       fillOpacity: 0.9,
       interactive: allowed,
       className: allowed ? "rect-allowed" : "rect-default",
     });
-    cache.bindTooltip(String(tokenValue), {
+    tokenCell.bindTooltip(String(ctx.tokenMap.get(token)), {
       permanent: true,
       direction: "center",
       className: "cell-value-tooltip",
     });
 
-    cache.addTo(ctx.gridLayer);
-    cache.on("click", () => handleInteraction(environment, i, j, allowed));
+    tokenCell.addTo(ctx.gridLayer);
+    tokenCell.on("click", () => handleInteraction(environment, i, j, allowed));
   }
-}
-
-// helper function to insert cell stroke. Minimizes overlapping for interactable cells
-function insetBounds(
-  environment: GridEnvironment,
-  bounds: leaflet.LatLngBounds,
-  insetPx: number,
-): leaflet.LatLngBounds {
-  if (!insetPx || insetPx <= 0) return bounds;
-  const z = environment.map.getZoom();
-  const nw = bounds.getNorthWest();
-  const se = bounds.getSouthEast();
-  const nwPt = environment.map.project(nw, z);
-  const sePt = environment.map.project(se, z);
-  const nwAdj = nwPt.add(leaflet.point(insetPx, insetPx));
-  const seAdj = sePt.subtract(leaflet.point(insetPx, insetPx));
-
-  if (seAdj.x <= nwAdj.x || seAdj.y <= nwAdj.y) {
-    return bounds;
-  }
-  return leaflet.latLngBounds(
-    environment.map.unproject(nwAdj, z),
-    environment.map.unproject(seAdj, z),
-  );
 }
 
 // --------------------------------- interaction logic --------------------- //
@@ -451,30 +498,7 @@ function combine(
         </div>
       </div>
     `;
-
-  // combine animation player
-  const st = ctx.statusPanelDiv;
-  st.classList.remove("status-anim");
-  void st.offsetWidth;
-  st.classList.add("status-anim");
-  st.addEventListener(
-    "animationend",
-    () => st.classList.remove("status-anim"),
-    { once: true },
-  );
-
-  const mapElement = document.getElementById("map");
-  if (mapElement) {
-    mapElement.classList.remove("mapPulse");
-    void mapElement.offsetWidth;
-    mapElement.classList.add("mapPulse");
-    mapElement.addEventListener(
-      "animationend",
-      () => mapElement.classList.remove("mapPulse"),
-      { once: true },
-    );
-  }
-
+  playCombineAnimation(environment.tokenCtx);
   environment.neighborhoodLayer.clearLayers();
   redrawGrid();
 }
@@ -531,35 +555,6 @@ function handleInteraction(
     place(environment, cell, currentHolding);
     return;
   }
-}
-
-// Tile colormapping logic
-function getColorsForTokenValue(tokenValue: number) {
-  const exp = Math.log2(tokenValue);
-  // index 0 -> value 2 (2^1)
-  const index = Math.max(0, Math.floor(exp) - 1);
-
-  const palette: { fill: string; stroke: string }[] = [
-    { fill: "#e4db82ff", stroke: "#b59f00" }, // 2
-    { fill: "#ff9800", stroke: "#b25500" }, // 4
-    { fill: "#f44336", stroke: "#b71c1c" }, // 8
-    { fill: "#4caf50", stroke: "#1b5e20" }, // 16
-    { fill: "#2196f3", stroke: "#0b79d0" }, // 32
-    { fill: "#9c27b0", stroke: "#6a1b9a" }, // 64
-    { fill: "#00bcd4", stroke: "#007c91" }, // 128
-    { fill: "#ff5722", stroke: "#b23b12" }, // 256
-    { fill: "#8bc34a", stroke: "#558b2f" }, // 512
-    { fill: "#ffc107", stroke: "#ff6f00" }, // 1024
-    { fill: "#e91e63", stroke: "#880e4fff" }, // 2048
-  ];
-
-  if (index < palette.length) {
-    return {
-      fillColor: palette[index].fill,
-      strokeColor: palette[index].stroke,
-    };
-  }
-  return { fillColor: "#000000", strokeColor: "#000000" }; // not implementing past 2048 should never reach this unless the end state broken
 }
 
 // --------------------------------- player movement --------------------- //
@@ -625,12 +620,14 @@ function endGame() {
 }
 
 // --------------------------------- main game loop --------------------- //
-map.on("moveend zoomend", redrawGrid);
-globalThis.addEventListener("resize", () => {
-  // invalidateSize tells leaflet to recalculate map dimensions
-  map.invalidateSize();
-  redrawGrid();
+let _isDragging = false;
+
+map.on("dragstart", () => (_isDragging = true));
+map.on("dragend", () => {
+  _isDragging = false;
+  redrawGrid(); // only redraw when user finishes dragging
 });
 
-// initial draw
+// still handle resize normally
+
 redrawGrid();
