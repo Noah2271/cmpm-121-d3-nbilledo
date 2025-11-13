@@ -87,7 +87,32 @@ function initGame(latitude: number, longitude: number) {
     maxZoom: GAMEPLAY_ZOOM,
     keyboard: false, // no keyboard panning. Interferes with manual movement.
   });
+  // --------------------------------- real-world player tracking --------------------- //
+  let lastLatLng = START_LATLNG;
 
+  if (navigator.geolocation) {
+    navigator.geolocation.watchPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        const newLatLng = leaflet.latLng(latitude, longitude);
+
+        const movedDistance = map.distance(lastLatLng, newLatLng);
+
+        const cellSizePx = gridEnvironment.pxCellSize;
+        const cellMeters = map.containerPointToLatLng([cellSizePx, 0])
+          .distanceTo(map.containerPointToLatLng([0, 0]));
+
+        playerMarker.setLatLng(newLatLng);
+        if (movedDistance >= cellMeters) {
+          map.panTo(newLatLng);
+          lastLatLng = newLatLng;
+          redrawGrid();
+        }
+      },
+    );
+  }
+
+  // --------------------------------- map layers and data structures --------------------- //
   const gridLayer = leaflet.layerGroup().addTo(map); // the actual gridlayer that tokens and empty spaces are drawn on
   const neighborhoodLayer = leaflet.layerGroup().addTo(map); // additional layer on the map to indicate to the user their interactable area
   const tokenMap = new Map<string, number>(); // map of i-j cell values and a token value used to draw tokens on the gridLayer
@@ -481,6 +506,7 @@ function initGame(latitude: number, longitude: number) {
       playerHolding: environment.tokenCtx.getPlayerHolding(),
       tokenMap: Array.from(environment.tokenCtx.tokenMap.entries()),
       pickedCells: Array.from(environment.tokenCtx.pickedCells),
+      playerLocation: playerMarker.getLatLng(),
     };
     localStorage.setItem("gameState", JSON.stringify(gameState));
   }
@@ -494,6 +520,7 @@ function initGame(latitude: number, longitude: number) {
       ctx.tokenMap = new Map<string, number>(gameState.tokenMap);
       ctx.pickedCells = new Set<string>(gameState.pickedCells);
       playerHolding = gameState.playerHolding;
+      playerMarker.setLatLng(gameState.playerLocation);
     }
   }
 
@@ -680,6 +707,11 @@ function initGame(latitude: number, longitude: number) {
   });
 
   loadGame(gridEnvironment);
+  map.panTo(playerMarker.getLatLng());
+  map.once("moveend", () => {
+    map.invalidateSize();
+    redrawGrid();
+  });
   if (playerHolding === null) {
     statusPanelDiv.innerHTML = "CLICK A CELL TO PICK UP A TOKEN AND BEGIN!";
   } else {

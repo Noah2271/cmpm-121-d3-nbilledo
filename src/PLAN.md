@@ -78,6 +78,7 @@ Key gameplay challenge: Can the user test the game with multiple gameplay sesiso
 
 - [x] State Persistence: Identify what game state characteristics need to save on close
 - [x] Add geolocation permission request, implement watchPosition for player marker, handle permission denied case.
-- [ ] Convert real world lat and lng values to grid cell positions
-- [ ] Add possible toggle between GPS and manual movement
-- [ ] Periodically neighborhood updating only after player moves a certain distance... snap to grid behavior.
+- [x] Convert real world lat and lng values to grid cell positions
+- [x] Add possible toggle between GPS and manual movement
+- [x] Periodically neighborhood updating only after player moves a certain distance... snap to grid behavior.
+- [ ] Test in a bus, walk around campus
