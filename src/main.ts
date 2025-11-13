@@ -58,7 +58,6 @@ controlsBox.innerHTML = `
   <br>
   <button id = "restart"> RESTART GAME</button>
 `;
-statusPanelDiv.innerHTML = "CLICK A CELL TO PICK UP A TOKEN AND BEGIN!";
 
 // --------------------------------- map and player set up ----------------- //
 const START_LATLNG = leaflet.latLng(
@@ -136,7 +135,7 @@ const tokenCtx: TokenContext = {
       | null;
     if (circle) {
       if (v == null) {
-        circle.setAttribute("fill", "#616362ff"); // default color when not holding
+        circle.setAttribute("fill", "#f8fcfaff"); // default color when not holding
       } else {
         const { fillColor } = getColorsForTokenValue(v);
         circle.setAttribute("fill", fillColor);
@@ -397,6 +396,7 @@ function iterateVisibleCellsAndDraw(
 // Main redraw function for movement or zoom, zoom not implemented
 function redrawGrid() {
   gridLayer.clearLayers();
+  saveGame(gridEnvironment);
 
   // update computed values on the shared env object instead of building a new one
   updateGridEnvironment();
@@ -458,6 +458,28 @@ function generateAndUpdateTokens(
 }
 
 // --------------------------------- interaction logic --------------------- //
+// Save game state to LocalStorage
+function saveGame(environment: GridEnvironment) {
+  const gameState = {
+    playerHolding: environment.tokenCtx.getPlayerHolding(),
+    tokenMap: Array.from(environment.tokenCtx.tokenMap.entries()),
+    pickedCells: Array.from(environment.tokenCtx.pickedCells),
+  };
+  localStorage.setItem("gameState", JSON.stringify(gameState));
+}
+
+// Load game state from LocalStorage
+function loadGame(environment: GridEnvironment) {
+  const ctx = environment.tokenCtx;
+  const savedState = localStorage.getItem("gameState");
+  if (savedState) {
+    const gameState = JSON.parse(savedState);
+    ctx.tokenMap = new Map<string, number>(gameState.tokenMap);
+    ctx.pickedCells = new Set<string>(gameState.pickedCells);
+    playerHolding = gameState.playerHolding;
+  }
+}
+
 // Player pickup logic
 function pickup(
   environment: GridEnvironment,
@@ -600,8 +622,10 @@ function move(dx: number, dy: number): void {
   move(0, -1);
 (document.getElementById("move-down") as HTMLButtonElement).onclick = () =>
   move(0, 1);
-(document.getElementById("restart") as HTMLButtonElement).onclick = () =>
+(document.getElementById("restart") as HTMLButtonElement).onclick = () => {
+  localStorage.removeItem("gameState");
   location.reload();
+};
 
 // --------------------------------- end state --------------------- //
 let gameWon = false;
@@ -636,4 +660,17 @@ map.on("dragend", () => {
   redrawGrid(); // only redraw when user finishes dragging
 });
 
+loadGame(gridEnvironment);
+if (playerHolding === null) {
+  statusPanelDiv.innerHTML = "CLICK A CELL TO PICK UP A TOKEN AND BEGIN!";
+} else {
+  statusPanelDiv.innerHTML = `
+      <div style="text-align:center;">
+        <div style="color:${getColorsForTokenValue(playerHolding!).fillColor};">
+          HOLDING: ${String(playerHolding)}
+        </div>
+        <div>CLICK TO PLACE ON AN EMPTY CELL OR MERGE WITH AN IDENTICAL CELL</div>
+      </div>
+    `;
+}
 redrawGrid();
