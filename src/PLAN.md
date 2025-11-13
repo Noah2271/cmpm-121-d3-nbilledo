@@ -77,7 +77,7 @@ Key gameplay challenge: Can the user test the game with multiple gameplay sesiso
 ## D3.d Steps
 
 - [x] State Persistence: Identify what game state characteristics need to save on close
-- [ ] Add geolocation permission request, implement watchPosition for player marker, handle permission denied case. Possibly disable manual controls when permission granted
+- [x] Add geolocation permission request, implement watchPosition for player marker, handle permission denied case.
 - [ ] Convert real world lat and lng values to grid cell positions
 - [ ] Add possible toggle between GPS and manual movement
 - [ ] Periodically neighborhood updating only after player moves a certain distance... snap to grid behavior.
