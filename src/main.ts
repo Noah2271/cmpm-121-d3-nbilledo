@@ -688,7 +688,9 @@ function initGame(latitude: number, longitude: number) {
 
   // --------------------------------- main game loop --------------------- //
   // main game loop initialization
-  loadGame(gridEnvironment); // load saved game state
+  if (localStorage.getItem("gameState")) {
+    loadGame(gridEnvironment); // load saved game state
+  }
   map.panTo(playerMarker.getLatLng()); // center map on player spawn point
   map.once("moveend", () => {
     map.invalidateSize();
