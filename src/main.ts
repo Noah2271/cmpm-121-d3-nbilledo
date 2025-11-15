@@ -9,6 +9,7 @@ const GAMEPLAY_ZOOM = 19;
 const NEIGHBORHOOD_SIZE = 4;
 const CACHE_SPAWN_PROBABILITY = 0.1;
 let playerHolding: number | null = null;
+let gameWon = false;
 
 // --------------------------------- div elements --------------------- //
 // mobile support
@@ -60,16 +61,15 @@ controlsBox.innerHTML = `
 `;
 
 // --------------------------------- map and player set up ----------------- //
-const DEFAULT_LAT = 33.94745; // MCDONALD
+const DEFAULT_LAT = 33.94745; // mcdonald's location
 const DEFAULT_LNG = -118.11787;
 
 navigator.geolocation.getCurrentPosition(
-  (position) => {
+  (position) => { // if given permission, use real-world location as the spawn point.
     const { latitude, longitude } = position.coords;
-    console.log("Using current position:", latitude, longitude);
     initGame(latitude, longitude);
   },
-  (_error) => {
+  (_error) => { // else pass in the default mcdonalds location
     initGame(DEFAULT_LAT, DEFAULT_LNG);
   },
 );
@@ -79,18 +79,19 @@ function initGame(latitude: number, longitude: number) {
     latitude,
     longitude,
   );
+
   const map = leaflet.map(mapDiv, {
     center: START_LATLNG,
     zoom: GAMEPLAY_ZOOM,
     zoomControl: false,
     minZoom: GAMEPLAY_ZOOM,
     maxZoom: GAMEPLAY_ZOOM,
-    keyboard: false, // no keyboard panning. Interferes with manual movement.
+    keyboard: false,
   });
   // --------------------------------- real-world player tracking --------------------- //
   let lastLatLng = START_LATLNG;
 
-  if (navigator.geolocation) {
+  if (navigator.geolocation) { // only track if the browser has support/permission for locational tracking.
     navigator.geolocation.watchPosition(
       (pos) => {
         const { latitude, longitude } = pos.coords;
@@ -103,7 +104,7 @@ function initGame(latitude: number, longitude: number) {
           .distanceTo(map.containerPointToLatLng([0, 0]));
 
         playerMarker.setLatLng(newLatLng);
-        if (movedDistance >= cellMeters) {
+        if (movedDistance >= cellMeters) { // every time the player moves a cell in any direction, refresh the screen and player position.
           map.panTo(newLatLng);
           lastLatLng = newLatLng;
           redrawGrid();
@@ -113,10 +114,10 @@ function initGame(latitude: number, longitude: number) {
   }
 
   // --------------------------------- map layers and data structures --------------------- //
-  const gridLayer = leaflet.layerGroup().addTo(map); // the actual gridlayer that tokens and empty spaces are drawn on
-  const neighborhoodLayer = leaflet.layerGroup().addTo(map); // additional layer on the map to indicate to the user their interactable area
-  const tokenMap = new Map<string, number>(); // map of i-j cell values and a token value used to draw tokens on the gridLayer
-  const pickedCells = new Set<string>(); // a set of i-j values that indicate which cells already had a token on it that has been grabbed.
+  const gridLayer = leaflet.layerGroup().addTo(map);
+  const neighborhoodLayer = leaflet.layerGroup().addTo(map);
+  const tokenMap = new Map<string, number>();
+  const pickedCells = new Set<string>();
 
   // Panes for Z-ordering
   map.createPane("neighbourhoodPane");
@@ -131,6 +132,7 @@ function initGame(latitude: number, longitude: number) {
       '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
   }).addTo(map);
 
+  // --------------------------------- player marker --------------------- //
   const playerDivIcon = leaflet.divIcon({
     className: "player-div-icon",
     html: `<div class="player-sprite">
@@ -149,8 +151,7 @@ function initGame(latitude: number, longitude: number) {
   }).addTo(map);
 
   // --------------------------------- grid and token logic argument objects --------------------- //
-  // Argument objects for token logic
-  type TokenContext = {
+  type TokenContext = { // argument object for token interaction functions
     gridLayer: leaflet.LayerGroup;
     tokenMap: Map<string, number>;
     pickedCells: Set<string>;
@@ -184,8 +185,7 @@ function initGame(latitude: number, longitude: number) {
     statusPanelDiv,
   };
 
-  // Argument objects for the grid environment
-  type GridEnvironment = {
+  type GridEnvironment = { // argument object for grid drawing functions
     map: leaflet.Map;
     gridLayer: leaflet.LayerGroup;
     neighborhoodLayer: leaflet.LayerGroup;
@@ -209,18 +209,9 @@ function initGame(latitude: number, longitude: number) {
     pxCellSize: map.getZoom() * 2,
   };
 
-  // Refreshes grid environment parameters, for use in redrawGrid()
-  function updateGridEnvironment() {
-    const { originPoint, pxScreenBoundary } = computeGridParams(
-      gridEnvironment.map,
-      gridEnvironment.origin,
-    );
-    gridEnvironment.originPoint = originPoint;
-    gridEnvironment.pxScreenBoundary = pxScreenBoundary;
-  }
-
   // --------------------------------- helper functions --------------------- //
-  function getBoundaries(
+  // helper function for getting latlng bounds from pixel bounds
+  function toLatLngBoundaries(
     environment: GridEnvironment,
     topLeft: leaflet.PointExpression,
     bottomRight: leaflet.PointExpression,
@@ -231,8 +222,8 @@ function initGame(latitude: number, longitude: number) {
     ]));
   }
 
+  // helper function to play combine animation
   function playCombineAnimation(ctx: typeof tokenCtx) {
-    // combine animation player
     const st = ctx.statusPanelDiv;
     st.classList.remove("status-anim");
     void st.offsetWidth;
@@ -256,7 +247,7 @@ function initGame(latitude: number, longitude: number) {
     }
   }
 
-  // inset latlng bounds for stroke handling
+  // helper function to inset stroke bounds by pixel amount
   function insetBounds(
     { map }: GridEnvironment,
     bounds: leaflet.LatLngBounds,
@@ -272,12 +263,10 @@ function initGame(latitude: number, longitude: number) {
     return leaflet.latLngBounds(insetTopLeft, insetBottomRight);
   }
 
-  // Tile colormapping logic
+  // helper function to map colors to tiles of specific value
   function getColorsForTokenValue(tokenValue: number) {
     const exp = Math.log2(tokenValue);
-    // index 0 -> value 2 (2^1)
     const index = Math.max(0, Math.floor(exp) - 1);
-
     const palette: { fill: string; stroke: string }[] = [
       { fill: "#e4db82ff", stroke: "#b59f00" }, // 2
       { fill: "#ff9800", stroke: "#b25500" }, // 4
@@ -291,33 +280,23 @@ function initGame(latitude: number, longitude: number) {
       { fill: "#ffc107", stroke: "#ff6f00" }, // 1024
       { fill: "#e91e63", stroke: "#880e4fff" }, // 2048
     ];
-
     if (index < palette.length) {
       return {
         fillColor: palette[index].fill,
         strokeColor: palette[index].stroke,
       };
     }
-    return { fillColor: "#000000", strokeColor: "#000000" }; // not implementing past 2048 should never reach this unless the end state broken
+    return { fillColor: "#000000", strokeColor: "#000000" }; // fallback color for if a value beyond 2048 somehow generates
   }
 
   // --------------------------------- grid and token logic functions --------------------- //
-  // Calculate a random value 2-16 for a given token. Return the value.
+  // token value generator, takes 2 and raises it to powers resulting values up to 16
   function generateTokenValue(token: string) {
-    const exp = 1 + Math.floor(luck(token + ":v") * 10);
+    const exp = 1 + Math.floor(luck(token + ":v") * 4);
     return 2 ** exp; // generates values 2,4,8,16
   }
 
-  // Grab and return map grid values and computer cell size.
-  function computeGridParams(map: leaflet.Map, origin: leaflet.LatLng) {
-    return {
-      zoom: map.getZoom(),
-      originPoint: map.project(origin, map.getZoom()),
-      pxScreenBoundary: map.getPixelBounds(),
-    };
-  }
-
-  // compute player grid position using GridEnviroment
+  // compute player grid position using relative to the origin point, using cell size as units
   function computePlayerGridPosition(environment: GridEnvironment) {
     const playerPoint = environment.map.project(
       playerMarker.getLatLng(),
@@ -330,7 +309,7 @@ function initGame(latitude: number, longitude: number) {
     return { playerPoint, playerI, playerJ };
   }
 
-  // Draws the active interactable radius around the player position.
+  // draws the active interactable radius around the player position
   function drawNeighbourhoodRect(
     environment: GridEnvironment,
     playerI: number,
@@ -352,7 +331,11 @@ function initGame(latitude: number, longitude: number) {
       ),
     );
 
-    const InteractableBounds = getBoundaries(environment, topLeft, bottomRight);
+    const InteractableBounds = toLatLngBoundaries(
+      environment,
+      topLeft,
+      bottomRight,
+    );
 
     const rect = leaflet.rectangle(InteractableBounds, {
       pane: "neighbourhoodPane",
@@ -366,8 +349,8 @@ function initGame(latitude: number, longitude: number) {
     rect.addTo(environment.neighborhoodLayer);
   }
 
-  // Draws a singular rectangle cell at the given i and j values.
-  function drawCellAndToken(
+  // draws a single regular cell on the grid and if it is is within player range of interaction.
+  function drawCell(
     environment: GridEnvironment,
     i: number,
     j: number,
@@ -384,7 +367,7 @@ function initGame(latitude: number, longitude: number) {
       ),
     );
 
-    const bounds = getBoundaries(environment, topLeft, bottomRight);
+    const bounds = toLatLngBoundaries(environment, topLeft, bottomRight);
     const allowed = Math.abs(i - Math.round(playerI)) < NEIGHBORHOOD_SIZE &&
       Math.abs(j - Math.round(playerJ)) < NEIGHBORHOOD_SIZE;
 
@@ -401,10 +384,10 @@ function initGame(latitude: number, longitude: number) {
       bg.on("click", () => handleInteraction(environment, i, j, true));
     }
 
-    generateAndUpdateTokens(environment, i, j, bounds, allowed);
+    generateAndUpdateTokens(environment, i, j, bounds, allowed); // pass the cell location to token generator and drawer
   }
 
-  // Calling function for drawCellAndToken, filling visible screen cells.
+  // main cell drawing loop for all visible cells within the current visible boundaries
   function iterateVisibleCellsAndDraw(
     environment: GridEnvironment,
     playerI: number,
@@ -427,30 +410,29 @@ function initGame(latitude: number, longitude: number) {
 
     for (let i = iMin; i <= iMax; i++) {
       for (let j = jMin; j <= jMax; j++) {
-        drawCellAndToken(environment, i, j, playerI, playerJ);
+        drawCell(environment, i, j, playerI, playerJ);
       }
     }
   }
 
-  // Main redraw function for movement or zoom, zoom not implemented
+  // main redraw function called on player movement and game state changes
   function redrawGrid() {
     gridLayer.clearLayers();
-    saveGame(gridEnvironment);
+    saveGame(gridEnvironment); // save the game every main state update
+    gridEnvironment.pxScreenBoundary = map.getPixelBounds(); // update visible pixel screen boundaries
 
-    // update computed values on the shared env object instead of building a new one
-    updateGridEnvironment();
     const { playerI, playerJ } = computePlayerGridPosition(gridEnvironment);
-    // use a single rounded player cell index for both the neighbourhood box and the allowed checks
     const playerCellI = Math.round(playerI);
     const playerCellJ = Math.round(playerJ);
 
-    if (playerHolding != null) {
+    if (playerHolding != null) { // draw the interactable neighborhood if the player is holding a token
       drawNeighbourhoodRect(gridEnvironment, playerCellI, playerCellJ);
-    }
+    } // redraw grid of the visible cells and tokens
     iterateVisibleCellsAndDraw(gridEnvironment, playerCellI, playerCellJ);
   }
 
-  // Function for deciding whether to generate a token in a cell, and drawing it if so
+  // generation function that takes a cell, i, j and deterministically assigns it as a valued token
+  // or, if the cell already is a token, updates the cell to represent itself as a token
   function generateAndUpdateTokens(
     environment: GridEnvironment,
     i: number,
@@ -500,7 +482,7 @@ function initGame(latitude: number, longitude: number) {
   }
 
   // --------------------------------- interaction logic --------------------- //
-  // Save game state to LocalStorage
+  // save game state to LocalStorage
   function saveGame(environment: GridEnvironment) {
     const gameState = {
       playerHolding: environment.tokenCtx.getPlayerHolding(),
@@ -511,7 +493,7 @@ function initGame(latitude: number, longitude: number) {
     localStorage.setItem("gameState", JSON.stringify(gameState));
   }
 
-  // Load game state from LocalStorage
+  // load game state from LocalStorage
   function loadGame(environment: GridEnvironment) {
     const ctx = environment.tokenCtx;
     const savedState = localStorage.getItem("gameState");
@@ -519,12 +501,12 @@ function initGame(latitude: number, longitude: number) {
       const gameState = JSON.parse(savedState);
       ctx.tokenMap = new Map<string, number>(gameState.tokenMap);
       ctx.pickedCells = new Set<string>(gameState.pickedCells);
-      playerHolding = gameState.playerHolding;
+      ctx.setPlayerHolding(gameState.playerHolding);
       playerMarker.setLatLng(gameState.playerLocation);
     }
   }
 
-  // Player pickup logic
+  // function for player pick up logic, updates player held if null after interacting with a token
   function pickup(
     environment: GridEnvironment,
     cell: string,
@@ -551,7 +533,8 @@ function initGame(latitude: number, longitude: number) {
     redrawGrid();
   }
 
-  // Player combine logic
+  // function for player combine logic, merges two identical tokens if the player is holding a token and interacts with an identical token.
+  // also plays combine animation.
   function combine(
     environment: GridEnvironment,
     cell: string,
@@ -588,7 +571,7 @@ function initGame(latitude: number, longitude: number) {
     redrawGrid();
   }
 
-  // Player place logic
+  // function for player place logic, if holding a token and interacts with an empty cell, places the held token onto the cell
   function place(
     environment: GridEnvironment,
     cell: string,
@@ -611,7 +594,7 @@ function initGame(latitude: number, longitude: number) {
     redrawGrid();
   }
 
-  // Main interaction handler
+  // main interaction handler that routes to pickup, combine, or place logic based on the current state of the cell and player holding
   function handleInteraction(
     environment: GridEnvironment,
     i: number,
@@ -621,7 +604,6 @@ function initGame(latitude: number, longitude: number) {
     const ctx = environment.tokenCtx;
     const cell = `${i},${j}`;
     if (gameWon || !allowed) return;
-
     const hasToken = ctx.tokenMap.has(cell);
     const currentHolding = ctx.getPlayerHolding();
 
@@ -634,15 +616,22 @@ function initGame(latitude: number, longitude: number) {
       combine(environment, cell, tokenValue, currentHolding);
       return;
     }
-
-    // empty cell -> place if holding something
     if (!hasToken && currentHolding !== null) {
       place(environment, cell, currentHolding);
       return;
     }
   }
 
+  // event Listener for drag events to prevent excessive redraws map panning via mouse/finger
+  let _isDragging = false;
+  map.on("dragstart", () => (_isDragging = true));
+  map.on("dragend", () => {
+    _isDragging = false;
+    redrawGrid(); // only redraw when user finishes dragging
+  });
+
   // --------------------------------- player movement --------------------- //
+  // player movement function, for manual movement controls
   function move(dx: number, dy: number): void {
     const zoom = map.getZoom();
     const pxCellSize = zoom * 2;
@@ -672,11 +661,11 @@ function initGame(latitude: number, longitude: number) {
   };
 
   // --------------------------------- end state --------------------- //
-  let gameWon = false;
+  // function to handle when the game reaches endstate of playerHolding = 2048
   function endGame() {
     if (gameWon) return;
     gameWon = true;
-    const winText = "YOU WIN!";
+    const winText = "YOU WIN!"; // update title and attach title animation to each character
     Title_Card.innerHTML = winText
       .split("")
       .map((ch, idx) => {
@@ -687,10 +676,10 @@ function initGame(latitude: number, longitude: number) {
       })
       .join("");
 
-    statusPanelDiv.innerHTML = `
+    statusPanelDiv.innerHTML = ` // update status panel
     <div style="text-align:center;">
       <div style="color:#880e4fff;">
-        YOU'VE REACHED 2048!
+        YOU'VE REACHED 2048! RESTART THE GAME TO PLAY AGAIN!
       </div>
       <div>Restart the game to play again!</div>
     </div>
@@ -698,24 +687,17 @@ function initGame(latitude: number, longitude: number) {
   }
 
   // --------------------------------- main game loop --------------------- //
-  let _isDragging = false;
-
-  map.on("dragstart", () => (_isDragging = true));
-  map.on("dragend", () => {
-    _isDragging = false;
-    redrawGrid(); // only redraw when user finishes dragging
-  });
-
-  loadGame(gridEnvironment);
-  map.panTo(playerMarker.getLatLng());
+  // main game loop initialization
+  loadGame(gridEnvironment); // load saved game state
+  map.panTo(playerMarker.getLatLng()); // center map on player spawn point
   map.once("moveend", () => {
     map.invalidateSize();
     redrawGrid();
   });
-  if (playerHolding === null) {
+  if (playerHolding === null) { // determine initial status panel on load based on playerHolding
     statusPanelDiv.innerHTML = "CLICK A CELL TO PICK UP A TOKEN AND BEGIN!";
   } else {
-    statusPanelDiv.innerHTML = `
+    statusPanelDiv.innerHTML = ` 
       <div style="text-align:center;">
         <div style="color:${getColorsForTokenValue(playerHolding!).fillColor};">
           HOLDING: ${String(playerHolding)}
@@ -724,5 +706,5 @@ function initGame(latitude: number, longitude: number) {
       </div>
     `;
   }
-  redrawGrid();
+  redrawGrid(); // initial grid draw
 }

@@ -23,10 +23,11 @@ Simple grid-based token game built for CMPM 121 D3.
   - Radius indication now presented to the user via which cells are colored and which are not. Still uses radius box for clear placement radius.
   - Player icon is now a circle that color matches to the current held value.
   - Mobile UI support via css media query and viewport meta tag.
-- D4.d: In Progress
-  - On game start, request geolocation form the player. If denied, allow manual control. If approved, disable.
-  - Add cross-session state persistence for cells, location, and current held value.
-  - Panning and radius grid snap positional threshold to keep the game from redrawing the grid constantly.
+- D4.d: Completed
+  - On game start, the game will ask the user for geolocational tracking permissions. If denied, the game will put the player at a default position ontop of a McDonald's. Movement controls for manual movement enabled for both geolocational gameplay and manual gameplay to allow play even when not moving. Location will just update to player's location on next movement.
+  - Game now has autosave via a saveState function and loadState function. The first being called every redrawGrid() call.
+  - Panning and interactable radius snap to player location every time the player position updates. This update is performed whenever the player's position changes by 1 cell size unit in any direction.
+  - Game can be restarted at any time, which will remove the current save data.
 
 ## Features implemented
 
@@ -34,8 +35,11 @@ Simple grid-based token game built for CMPM 121 D3.
 - Interactable neighborhood around the player that moves with the player.
 - Pick up, place, and combine mechanics.
 - Token visuals and value tooltips.
-- Button movement controls
+- Button movement controls, available for both geolocational and non-geolocational play.
 - Cell merge effects, and color effects for player actions.
 - Game end state when the player crafts and creates token 2048.
-- Mobile UI support
-- Game reset via restart button
+- Mobile UI support.
+- Game reset via restart button.
+- Autosave implemented, called every grid redraw. Save is loaded on page load.
+- Restart feature to hard reset the game and remove save data.
+- Geolocational tracking, updates player position whenever position change from last location reaches a certain threshold.
