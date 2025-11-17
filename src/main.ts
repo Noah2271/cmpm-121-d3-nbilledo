@@ -263,30 +263,36 @@ function initGame(latitude: number, longitude: number) {
     return leaflet.latLngBounds(insetTopLeft, insetBottomRight);
   }
 
-  // helper function to map colors to tiles of specific value
+  // --------------------------------- token color palette --------------------- //
+  const TOKEN_COLOR_PALETTE: ReadonlyArray<{
+    value: number;
+    fill: string;
+    stroke: string;
+  }> = [
+    { value: 2, fill: "#e4db82ff", stroke: "#b59f00" },
+    { value: 4, fill: "#ff9800", stroke: "#b25500" },
+    { value: 8, fill: "#f44336", stroke: "#b71c1c" },
+    { value: 16, fill: "#4caf50", stroke: "#1b5e20" },
+    { value: 32, fill: "#2196f3", stroke: "#0b79d0" },
+    { value: 64, fill: "#9c27b0", stroke: "#6a1b9a" },
+    { value: 128, fill: "#00bcd4", stroke: "#007c91" },
+    { value: 256, fill: "#ff5722", stroke: "#b23b12" },
+    { value: 512, fill: "#8bc34a", stroke: "#558b2f" },
+    { value: 1024, fill: "#ffc107", stroke: "#ff6f00" },
+    { value: 2048, fill: "#e91e63", stroke: "#880e4fff" },
+  ] as const;
+
   function getColorsForTokenValue(tokenValue: number) {
-    const exp = Math.log2(tokenValue);
-    const index = Math.max(0, Math.floor(exp) - 1);
-    const palette: { fill: string; stroke: string }[] = [
-      { fill: "#e4db82ff", stroke: "#b59f00" }, // 2
-      { fill: "#ff9800", stroke: "#b25500" }, // 4
-      { fill: "#f44336", stroke: "#b71c1c" }, // 8
-      { fill: "#4caf50", stroke: "#1b5e20" }, // 16
-      { fill: "#2196f3", stroke: "#0b79d0" }, // 32
-      { fill: "#9c27b0", stroke: "#6a1b9a" }, // 64
-      { fill: "#00bcd4", stroke: "#007c91" }, // 128
-      { fill: "#ff5722", stroke: "#b23b12" }, // 256
-      { fill: "#8bc34a", stroke: "#558b2f" }, // 512
-      { fill: "#ffc107", stroke: "#ff6f00" }, // 1024
-      { fill: "#e91e63", stroke: "#880e4fff" }, // 2048
-    ];
-    if (index < palette.length) {
-      return {
-        fillColor: palette[index].fill,
-        strokeColor: palette[index].stroke,
-      };
+    // iterate through shared palette instead of calculating index
+    for (const entry of TOKEN_COLOR_PALETTE) {
+      if (entry.value === tokenValue) {
+        return {
+          fillColor: entry.fill,
+          strokeColor: entry.stroke,
+        };
+      }
     }
-    return { fillColor: "#000000", strokeColor: "#000000" }; // fallback color for if a value beyond 2048 somehow generates
+    return { fillColor: "#000000", stroke: "#000000" };
   }
 
   // --------------------------------- grid and token logic functions --------------------- //
@@ -675,8 +681,8 @@ function initGame(latitude: number, longitude: number) {
         }s">${char}</span>`;
       })
       .join("");
-
-    statusPanelDiv.innerHTML = ` // update status panel
+    // update status panel to reflect win state
+    statusPanelDiv.innerHTML = `
     <div style="text-align:center;">
       <div style="color:#880e4fff;">
         YOU'VE REACHED 2048! RESTART THE GAME TO PLAY AGAIN!
@@ -698,6 +704,16 @@ function initGame(latitude: number, longitude: number) {
   });
   if (playerHolding === null) { // determine initial status panel on load based on playerHolding
     statusPanelDiv.innerHTML = "CLICK A CELL TO PICK UP A TOKEN AND BEGIN!";
+  } else if (playerHolding === 2048) {
+    endGame();
+    statusPanelDiv.innerHTML = `
+      <div style="text-align:center;">
+        <div style="color:#880e4fff;">
+          YOU'VE REACHED 2048! RESTART THE GAME TO PLAY AGAIN!
+        </div>
+        <div>Restart the game to play again!</div>
+      </div>
+    `;
   } else {
     statusPanelDiv.innerHTML = ` 
       <div style="text-align:center;">
