@@ -62,12 +62,12 @@ Key gameplay challenge: Can you fix a gameplay bug where players can farm tokens
 - [x] Grid map remembers state after players grab it due to the marking of a tile as "picked" after the player picks a token off of it. This keeps cells from respawning after being interacted with since the token i, j values relative to the origin are stored into a Set which is checked on tile spawn.
 - [x] Grid map also remembers when the player since the cell value and coordinates are also stored in a Map, and these are also checked on cell spawn.
 - [x] Possibly change the radius box, instead using the 'allowed' value of each box denoting whether or not the box has a certain effect which indicates it's in range of the player.
-- [x] Maybe look into a more efficient way to spawn tiles or add a cooldown to how fast the player can MANUALLY move across the screen via arrow controls. Too much movement loads tiles way too fast. A possible solution can also be loading in tiles after a set amount of time after manual movement stops.
 - [x] Change the player indicator to something more interesting.
 - [x] Add viewport meta tag to HTML
 - [x] Create CSS media query for mobile
 - [x] Add on-screen directional button controls
 - [x] Test on actual mobile device
+- [x] NOTE: REALIZED I DID NOT IMPLEMENT FLYWEIGHT/MOMENTO CORRECTLY. USED FLYWEIGHT PATTERN TO OPTIMIZE CELL/TOKEN RENDERING, AND MOMENTO PATTERN TO CAPTURE/RESTORE GAME STATE POST D3.D
 
 ## D4.d Gameplay across real-world space and time
 

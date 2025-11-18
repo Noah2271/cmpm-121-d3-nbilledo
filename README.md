@@ -23,6 +23,7 @@ Simple grid-based token game built for CMPM 121 D3.
   - Radius indication now presented to the user via which cells are colored and which are not. Still uses radius box for clear placement radius.
   - Player icon is now a circle that color matches to the current held value.
   - Mobile UI support via css media query and viewport meta tag.
+  - Newly added flyweight optimization and memento state saving.
 - D4.d: Completed
   - On game start, the game will ask the user for geolocational tracking permissions. If denied, the game will put the player at a default position ontop of a McDonald's. Movement controls for manual movement enabled for both geolocational gameplay and manual gameplay to allow play even when not moving. Location will just update to player's location on next movement.
   - Game now has autosave via a saveState function and loadState function. The first being called every redrawGrid() call.
@@ -35,11 +36,11 @@ Simple grid-based token game built for CMPM 121 D3.
 - Interactable neighborhood around the player that moves with the player.
 - Pick up, place, and combine mechanics.
 - Token visuals and value tooltips.
-- Button movement controls, available for both geolocational and non-geolocational play.
+- Button movement controls, disabled during geolocational play.
 - Cell merge effects, and color effects for player actions.
 - Game end state when the player crafts and creates token 2048.
 - Mobile UI support.
 - Game reset via restart button.
 - Autosave implemented, called every grid redraw. Save is loaded on page load.
 - Restart feature to hard reset the game and remove save data.
-- Geolocational tracking, updates player position whenever position change from last location reaches a certain threshold.
+- Geolocational tracking.
