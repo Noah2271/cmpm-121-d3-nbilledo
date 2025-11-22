@@ -724,12 +724,8 @@ function initGame(latitude: number, longitude: number) {
     }
   }
 
-  // --------------------------------- drag optimization --------------------- //
-  // event listeners to avoid redrawing grid while dragging
-  let _isDragging = false;
-  map.on("dragstart", () => (_isDragging = true));
-  map.on("dragend", () => {
-    _isDragging = false;
+  // --------------------------------- map movement --------------------- //
+  map.on("moveend", () => {
     redrawGrid();
   });
 
