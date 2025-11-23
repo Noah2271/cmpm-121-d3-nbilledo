@@ -49,15 +49,19 @@ layout.appendChild(controlsBox);
 
 controlsBox.innerHTML = `
   <div class="controls-title">CONTROLS</div>
-  <div id = "moveControls">
-  <button id = "move-up"> UP</button>
-  <div>
-  <button id = "move-left"> LEFT</button><button id = "move-right"> RIGHT</button>
-  </div>
-  <button id = "move-down"> DOWN</button>
+  <div id="moveControls">
+    <button id="move-up">UP</button>
+    <div>
+      <button id="move-left">LEFT</button><button id="move-right">RIGHT</button>
+    </div>
+    <button id="move-down">DOWN</button>
   </div>
   <br>
-  <button id = "restart"> RESTART GAME</button>
+  <button id="restart">RESTART GAME</button>
+  <div class="note">
+  <br>
+    NOTE: TO TOGGLE GEOLOCATION, TOGGLE VIA BROWSER SETTINGS. IT WILL RESTART THE GAME AND REMOVE/ADD MANUAL CONTROLS.
+  </div>
 `;
 
 // --------------------------------- map and player set up ----------------- //
@@ -76,6 +80,13 @@ navigator.geolocation.getCurrentPosition(
     initGame(DEFAULT_LAT, DEFAULT_LNG);
   },
 );
+
+navigator.permissions.query({ name: "geolocation" }).then((status) => {
+  status.onchange = () => {
+    location.reload(); // toggle resets the game entirely
+    localStorage.clear();
+  };
+});
 
 // ----------------------------- Flyweight types ------------------------------
 // flyweight factory for cells. Stores the cell color, stroke, and whether cell is interactable by default
