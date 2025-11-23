@@ -49,18 +49,16 @@ layout.appendChild(controlsBox);
 
 controlsBox.innerHTML = `
   <div class="controls-title">CONTROLS</div>
+
   <div id="moveControls">
     <button id="move-up">UP</button>
-    <div>
-      <button id="move-left">LEFT</button><button id="move-right">RIGHT</button>
-    </div>
     <button id="move-down">DOWN</button>
+    <button id="move-left">LEFT</button>
+    <button id="move-right">RIGHT</button>
   </div>
-  <br>
-  <button id="restart">RESTART GAME</button>
+    <button id="restart">RESTART GAME</button>
   <div class="note">
-  <br>
-    NOTE: TO TOGGLE GEOLOCATION, TOGGLE VIA BROWSER SETTINGS. IT WILL RESTART THE GAME AND REMOVE/ADD MANUAL CONTROLS.
+    NOTE: TO TOGGLE GEOLOCATION, TOGGLE VIA BROWSER SETTINGS AND RESTART THE GAME ON MOBILE. THIS WILL ADD/REMOVE THE CONTROLS.
   </div>
 `;
 
@@ -83,7 +81,7 @@ navigator.geolocation.getCurrentPosition(
 
 navigator.permissions.query({ name: "geolocation" }).then((status) => {
   status.onchange = () => {
-    location.reload(); // toggle resets the game entirely
+    location.reload(); // toggle resets the game for PC.
     localStorage.clear();
   };
 });
